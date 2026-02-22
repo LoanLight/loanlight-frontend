@@ -63,6 +63,21 @@ final class PlanViewModel: ObservableObject {
 
     // MARK: - Fetch limits (call when expenses change, before sliders are shown)
 
+    /// Called on logout — wipes all cached state
+    func reset() {
+        planResponse    = nil
+        limitsResponse  = nil
+        jobOffer        = nil
+        housing         = nil
+        monthlyCommitment       = 0
+        monthlyInvestmentAmount = 0
+        monthlyExpenses         = 0
+        investingEnabled        = true
+        repaymentStrategy       = .avalanche
+        riskLevel               = .moderate
+        errorMessage            = nil
+    }
+
     func fetchLimits() async {
         // Send as a plain number string — avoid "0.0" which confuses some backends
         let essentialsValue = monthlyExpenses > 0 ? monthlyExpenses : Decimal(900) // sensible default

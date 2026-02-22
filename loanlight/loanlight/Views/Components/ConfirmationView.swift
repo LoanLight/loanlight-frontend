@@ -7,97 +7,89 @@
 //
 import SwiftUI
 
-struct LoanConfirmationView: View {
+// Shows only the fields the API actually needs:
+// loan_name (from loanType), balance, interest_rate, min_monthly_payment
 
+struct LoanConfirmationView: View {
     @State var loan: LoanEntity
     var onSave: (LoanEntity) -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ZStack {
-            Color.screenBg.ignoresSafeArea()
+            Color.paper.ignoresSafeArea()
 
             VStack(spacing: 0) {
-
-                // ── Progress Bar ──
-                HStack(spacing: 4) {
-                    ForEach(1...6, id: \.self) { step in
-                        RoundedRectangle(cornerRadius: 2)
-                            .frame(height: 3)
-                            .foregroundColor(step <= 2 ? .primary : Color(.systemGray5))
-                    }
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 12)
-                .padding(.bottom, 20)
-
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
 
-                        // ── Step Pill ──
+                        // ── Extracted badge ───────────────────────────
                         HStack(spacing: 6) {
-                            Circle()
-                                .frame(width: 6, height: 6)
-                                .foregroundColor(.primary)
-                            Text("CONFIRM DETAILS")
-                                .font(AppFont.chip)
-                                .foregroundColor(.primary)
-                                .tracked(.wide)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Capsule().stroke(Color.primary.opacity(0.3), lineWidth: 1))
-                        .padding(.bottom, 14)
-
-                        Text("Federal Loan Info")
-                            .font(AppFont.serif(28))
-                            .foregroundColor(.primaryText)
-                            .padding(.bottom, 6)
-
-                        Text("We extracted these fields from your PDF.\nTap any to edit.")
-                            .font(AppFont.body)
-                            .foregroundColor(.secondaryText)
-                            .lineSpacing(3)
-                            .padding(.bottom, 16)
-
-                        HStack(spacing: 6) {
-                            Text("✦")
-                                .font(AppFont.micro)
-                                .foregroundColor(.primary)
-                            Text("8 fields extracted from PDF")
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.sage)
+                                .font(.system(size: 13))
+                            Text("Fields extracted from PDF")
                                 .font(AppFont.captionBold)
-                                .foregroundColor(.primary)
+                                .foregroundColor(.sage)
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
-                        .background(Color.primaryTint)
+                        .background(Color.sage.opacity(0.10))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .padding(.bottom, 20)
 
-                        EditableField(label: "SERVICER",        value: $loan.servicer)
-                        EditableField(label: "TOTAL BALANCE",   value: $loan.totalBalance)
-                        EditableField(label: "LOAN TYPE",       value: $loan.loanType)
-                        EditableField(label: "INTEREST RATE",   value: $loan.interestRate)
-                        EditableField(label: "REPAYMENT PLAN",  value: $loan.repaymentPlan)
-                        EditableField(label: "MONTHLY PAYMENT", value: $loan.monthlyPayment)
-                        EditableField(label: "LOAN STATUS",     value: $loan.loanStatus)
+                        Text("Confirm Loan Details")
+                            .font(AppFont.serif(24))
+                            .foregroundColor(.ink)
+                            .padding(.bottom, 6)
 
-                        Spacer(minLength: 32)
+                        Text("Only what's needed for your plan. Tap any field to edit.")
+                            .font(AppFont.caption)
+                            .foregroundColor(.mist)
+                            .padding(.bottom, 24)
+
+                        // ── The 3 fields the API needs ────────────────
+                        VStack(spacing: 10) {
+                            EditableField(label: "LOAN TYPE / NAME", value: $loan.loanType,
+                                          placeholder: "e.g. Direct Subsidized")
+                            EditableField(label: "TOTAL BALANCE",    value: $loan.totalBalance,
+                                          placeholder: "e.g. 18750.00")
+                            EditableField(label: "INTEREST RATE",    value: $loan.interestRate,
+                                          placeholder: "e.g. 4.990")
+                            EditableField(label: "MIN MONTHLY PAYMENT", value: $loan.monthlyPayment,
+                                          placeholder: "e.g. 195.00 (0 if deferred)")
+                        }
+                        .padding(.bottom, 28)
+
+                        Spacer(minLength: 20)
                     }
                     .padding(.horizontal, 24)
+                    .padding(.top, 20)
                 }
 
-                Button(action: {
-                    onSave(loan)
-                    dismiss()
-                }) {
-                    Text("Save & Continue")
-                        .font(AppFont.ctaButton)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 17)
-                        .background(Color.primary)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                // ── CTA ───────────────────────────────────────────────
+                VStack(spacing: 10) {
+                    Button(action: { onSave(loan); dismiss() }) {
+                        Text("Save & Continue")
+                            .font(AppFont.ctaButton)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 17)
+                            .background(Color.sage)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                    }
+
+                    Button(action: { dismiss() }) {
+                        Text("Re-upload PDF")
+                            .font(AppFont.body.weight(.medium))
+                            .foregroundColor(.ink)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 17)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(Color.border, lineWidth: 1.5)
+                            )
+                    }
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 36)
@@ -107,59 +99,42 @@ struct LoanConfirmationView: View {
     }
 }
 
+// MARK: - EditableField (only the fields that matter)
 
 struct EditableField: View {
     let label: String
     @Binding var value: String
+    var placeholder: String = "Enter value"
     @FocusState private var focused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(label)
                 .font(AppFont.sectionLabel)
-                .foregroundColor(.secondaryText)
-                .tracked(.wide)
+                .tracking(1.1)
+                .foregroundColor(.mist)
 
             HStack {
-                TextField(value.isEmpty ? "Not found — enter manually" : label, text: $value)
-                    .font(AppFont.bodySemibold)
-                    .foregroundColor(value.isEmpty ? .secondaryText : .primaryText)
+                TextField(placeholder, text: $value)
+                    .font(AppFont.bodyMedium ?? .body)
+                    .foregroundColor(value.isEmpty ? .mist : .ink)
                     .focused($focused)
 
                 if !focused {
                     Button("Edit") { focused = true }
-                        .font(AppFont.smallButton)
-                        .foregroundColor(.primary)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.sage)
                 }
             }
         }
         .padding(16)
-        .background(Color.cardBg)
+        .background(Color.surface)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(
-                    focused ? Color.primary.opacity(0.6) : Color.cardBorder,
-                    lineWidth: 1
-                )
+                .stroke(focused ? Color.sage.opacity(0.5) : Color.border, lineWidth: 1)
         )
         .animation(.easeInOut(duration: 0.15), value: focused)
-        .padding(.bottom, 10)
     }
 }
 
-#Preview {
-    LoanConfirmationView(
-        loan: LoanEntity(
-            servicer: "MOHELA",
-            totalBalance: "$52,400.00",
-            loanType: "Direct Sub + Unsub",
-            interestRate: "5.50%",
-            repaymentPlan: "Standard (10-yr)",
-            monthlyPayment: "$569.00",
-            loanStatus: "In Repayment"
-        )
-    ) { saved in
-        print("Saved: \(saved)")
-    }
-}

@@ -36,12 +36,17 @@ struct AppCoordinator: View {
     @State private var onboardingState = OnboardingState()
     @StateObject private var planVM = PlanViewModel()
     @State private var isCheckingAuth = true
+    @State private var authCheckComplete = false
+    @State private var splashComplete = false
 
     var body: some View {
         Group {
             if isCheckingAuth {
-                // Brief auth check — show nothing or a splash
-                Color.paper.ignoresSafeArea()
+                // Show branded splash while checking auth
+                SplashView(onComplete: {
+                    splashComplete = true
+                    if authCheckComplete { isCheckingAuth = false }
+                })
             } else {
                 switch screen {
                 case .auth:
@@ -51,7 +56,10 @@ struct AppCoordinator: View {
                 case .onboarding(let step):
                     onboardingView(for: step)
                 case .main:
-                    MainTabView(planVM: planVM)
+                    MainTabView(planVM: planVM, onLogout: {
+                        planVM.reset()
+                        transition(to: .auth)
+                    })
                 }
             }
         }
@@ -63,7 +71,10 @@ struct AppCoordinator: View {
     // MARK: - Launch routing
 
     private func checkAuthAndRoute() async {
-        defer { isCheckingAuth = false }
+        defer {
+            authCheckComplete = true
+            if splashComplete { isCheckingAuth = false }
+        }
 
         guard TokenStore.isLoggedIn else {
             screen = .auth
@@ -253,6 +264,96 @@ struct AppCoordinator: View {
     private func transition(to next: AppScreen) {
         withAnimation(.easeInOut(duration: 0.35)) {
             screen = next
+        }
+    }
+}
+
+
+
+
+// MARK: - SplashView
+// Shows the FirstLoadingView animation without its internal navigation.
+// AppCoordinator replaces it as soon as the auth check completes.
+
+private struct SplashView: View {
+    var onComplete: (() -> Void)? = nil
+
+    @State private var isLit: Bool = false
+    @State private var bounceOffset: CGFloat = 0
+    @State private var glowOpacity: Double = 0
+    @State private var fadeOut: Bool = false
+
+    var body: some View {
+        ZStack {
+            Color(red: 0.980, green: 0.980, blue: 0.973).ignoresSafeArea()
+
+            GeometryReader { geo in
+                ZStack {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    (isLit
+                                        ? Color(red: 0.239, green: 0.420, blue: 0.369)
+                                        : Color(red: 0.788, green: 0.659, blue: 0.298)
+                                    ).opacity(0.55),
+                                    Color.clear
+                                ],
+                                center: .center, startRadius: 0, endRadius: 120
+                            )
+                        )
+                        .frame(width: 400, height: 400)
+                        .opacity(glowOpacity)
+                        .blur(radius: 30)
+                        .animation(.easeInOut(duration: 0.4), value: isLit)
+
+                    Image(isLit ? "bulb_blue" : "bulb_yellow")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 280, height: 280)
+                        .offset(y: bounceOffset)
+                        .shadow(
+                            color: isLit
+                                ? Color(red: 0.239, green: 0.420, blue: 0.369).opacity(0.8)
+                                : Color(red: 0.788, green: 0.659, blue: 0.298).opacity(0.6),
+                            radius: isLit ? 36 : 12
+                        )
+                }
+                .frame(width: geo.size.width, height: geo.size.height)
+            }
+            .opacity(fadeOut ? 0 : 1)
+            .animation(.easeInOut(duration: 0.5), value: fadeOut)
+        }
+        .onAppear { runAnimation() }
+    }
+
+    private func runAnimation() {
+        // 1. Gentle bounce
+        withAnimation(.interpolatingSpring(stiffness: 200, damping: 8).repeatCount(2, autoreverses: true)) {
+            bounceOffset = -14
+        }
+
+        // 2. Big jump → light up at peak
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.45)) {
+                bounceOffset = -36
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                withAnimation(.easeIn(duration: 0.15))  { isLit = true }
+                withAnimation(.easeOut(duration: 0.7))  { glowOpacity = 1.0 }
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.55).delay(0.08)) {
+                    bounceOffset = 0
+                }
+            }
+        }
+
+        // 3. Hold lit for a beat, fade out, then signal complete
+        // Total: 1.2 + 0.18 + 1.8 hold = ~3.2s before fade starts
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.2) {
+            withAnimation(.easeInOut(duration: 0.5)) { fadeOut = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                onComplete?()
+            }
         }
     }
 }
