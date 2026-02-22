@@ -90,14 +90,22 @@ struct PlanCalculateRequest: Encodable {
 // Maps to: PlanCalculateResponse in plan_models.py
 
 struct LimitsOut: Decodable {
-    /// Minimum the slider can go (sum of all min monthly payments)
     let minCommitment: Decimal
-    /// Maximum the slider can go (take home - rent - essentials)
     let maxCommitment: Decimal
 
     enum CodingKeys: String, CodingKey {
         case minCommitment = "min_commitment"
         case maxCommitment = "max_commitment"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        minCommitment = Self.d(c, .minCommitment)
+        maxCommitment = Self.d(c, .maxCommitment)
+    }
+    private static func d(_ c: KeyedDecodingContainer<CodingKeys>, _ k: CodingKeys) -> Decimal {
+        if let s = try? c.decode(String.self, forKey: k), let v = Decimal(string: s) { return v }
+        return (try? c.decode(Decimal.self, forKey: k)) ?? 0
     }
 }
 
@@ -121,6 +129,22 @@ struct CashflowOut: Decodable {
         case extraAboveMinimum        = "extra_above_minimum"
         case discretionaryLeft        = "discretionary_left"
     }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func d(_ k: CodingKeys) -> Decimal {
+            if let s = try? c.decode(String.self, forKey: k), let v = Decimal(string: s) { return v }
+            return (try? c.decode(Decimal.self, forKey: k)) ?? 0
+        }
+        takeHomeMonthly          = d(.takeHomeMonthly)
+        rentMonthly              = d(.rentMonthly)
+        nonRentEssentials        = d(.nonRentEssentials)
+        discretionaryBeforeLoans = d(.discretionaryBeforeLoans)
+        minimumLoanPayments      = d(.minimumLoanPayments)
+        monthlyCommitment        = d(.monthlyCommitment)
+        extraAboveMinimum        = d(.extraAboveMinimum)
+        discretionaryLeft        = d(.discretionaryLeft)
+    }
 }
 
 struct InvestingOut: Decodable {
@@ -137,6 +161,19 @@ struct InvestingOut: Decodable {
         case monthlyInvestment                 = "monthly_investment"
         case projectedInvestmentValueAtFreedom = "projected_investment_value_at_freedom"
     }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func d(_ k: CodingKeys) -> Decimal {
+            if let s = try? c.decode(String.self, forKey: k), let v = Decimal(string: s) { return v }
+            return (try? c.decode(Decimal.self, forKey: k)) ?? 0
+        }
+        enabled                            = try c.decode(Bool.self, forKey: .enabled)
+        riskLevel                          = try c.decode(RiskLevel.self, forKey: .riskLevel)
+        expectedReturnAnnual               = d(.expectedReturnAnnual)
+        monthlyInvestment                  = d(.monthlyInvestment)
+        projectedInvestmentValueAtFreedom  = d(.projectedInvestmentValueAtFreedom)
+    }
 }
 
 /// One data point in the month-by-month projection series
@@ -145,7 +182,7 @@ struct SeriesPoint: Decodable, Identifiable {
     let monthIndex: Int
     let date: Date
     let remainingLoanBalance: Decimal
-    let paidPct: Decimal               // 0.0–1.0, useful for progress display
+    let paidPct: Decimal
     let investmentBalance: Decimal
 
     enum CodingKeys: String, CodingKey {
@@ -154,6 +191,19 @@ struct SeriesPoint: Decodable, Identifiable {
         case remainingLoanBalance  = "remaining_loan_balance"
         case paidPct               = "paid_pct"
         case investmentBalance     = "investment_balance"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func d(_ k: CodingKeys) -> Decimal {
+            if let s = try? c.decode(String.self, forKey: k), let v = Decimal(string: s) { return v }
+            return (try? c.decode(Decimal.self, forKey: k)) ?? 0
+        }
+        monthIndex            = try c.decode(Int.self, forKey: .monthIndex)
+        date                  = try c.decode(Date.self, forKey: .date)
+        remainingLoanBalance  = d(.remainingLoanBalance)
+        paidPct               = d(.paidPct)
+        investmentBalance     = d(.investmentBalance)
     }
 }
 
@@ -178,5 +228,22 @@ struct PlanCalculateResponse: Decodable {
         case investing
         case series
         case warnings
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func d(_ k: CodingKeys) -> Decimal {
+            if let s = try? c.decode(String.self, forKey: k), let v = Decimal(string: s) { return v }
+            return (try? c.decode(Decimal.self, forKey: k)) ?? 0
+        }
+        freedomDate        = try c.decode(Date.self, forKey: .freedomDate)
+        monthsToFreedom    = try c.decode(Int.self, forKey: .monthsToFreedom)
+        limits             = try c.decode(LimitsOut.self, forKey: .limits)
+        cashflow           = try c.decode(CashflowOut.self, forKey: .cashflow)
+        totalStartingDebt  = d(.totalStartingDebt)
+        totalInterestPaid  = d(.totalInterestPaid)
+        investing          = try c.decode(InvestingOut.self, forKey: .investing)
+        series             = try c.decode([SeriesPoint].self, forKey: .series)
+        warnings           = try c.decode([String].self, forKey: .warnings)
     }
 }

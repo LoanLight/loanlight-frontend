@@ -27,8 +27,8 @@ enum OnboardingStep {
 
 private final class OnboardingState {
     var confirmedFederalLoans: [LoanEntity]  = []
-    var pendingPrivateLoans: [LoanEntity]    = []   // held for confirmation screen
-    var privateLoans: [PrivateLoanIn]        = []   // finalized after confirmation
+    var pendingPrivateLoans: [LoanEntity]    = []
+    var privateLoans: [PrivateLoanIn]        = []
     var jobOffer: JobOfferIn?                = nil
     var housing: HousingIn?                  = nil
     var monthlyExpenses: Double              = 0
@@ -78,14 +78,11 @@ struct AppCoordinator: View {
             )
 
         case .privateLoans:
-            // User uploads all private loans, taps Continue —
-            // passes [LoanEntity] so confirmation screen can show/edit them
             PrivateLoanView(
                 currentStep: 3,
                 totalSteps: 7,
                 onContinue: { loanEntities in
                     if loanEntities.isEmpty {
-                        // Skipped — go straight to offer letter
                         onboardingState.privateLoans = []
                         transition(to: .onboarding(.offerLetter))
                     } else {
@@ -99,7 +96,6 @@ struct AppCoordinator: View {
             PrivateLoansConfirmationView(
                 loans: onboardingState.pendingPrivateLoans,
                 onSave: { savedLoans in
-                    // Convert confirmed LoanEntities to PrivateLoanIn for backend
                     onboardingState.privateLoans = savedLoans.map { entity in
                         PrivateLoanIn(
                             lenderName: entity.servicer.isEmpty ? "Private Loan" : entity.servicer,
@@ -132,7 +128,113 @@ struct AppCoordinator: View {
 
         case .loading:
             PlanLoadingView {
+                Task {
+                    await submitOnboardingData()
+                }
+            }
+        }
+    }
+
+    // MARK: - Backend Base URL
+    // Replace with your deployed backend URL — no trailing slash.
+    private let baseURL = "https://deck-ordering-presidential-awards.trycloudflare.com"
+
+    // MARK: - Submit All Onboarding Data to Backend
+
+    private func submitOnboardingData() async {
+        guard let token = TokenStore.load() else {
+            print("⚠️ No token found")
+            transition(to: .main)
+            return
+        }
+
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let str = try container.decode(String.self)
+            let df = DateFormatter()
+            df.dateFormat = "yyyy-MM-dd"
+            df.locale = Locale(identifier: "en_US_POSIX")
+            if let date = df.date(from: str) { return date }
+            let iso = ISO8601DateFormatter()
+            if let date = iso.date(from: str) { return date }
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot parse date: \(str)")
+        }
+
+        func post<Body: Encodable, Response: Decodable>(
+            path: String,
+            body: Body,
+            as type: Response.Type
+        ) async throws -> Response {
+            let url = URL(string: baseURL + path)!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.httpBody = try encoder.encode(body)
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+                let body = String(data: data, encoding: .utf8) ?? "no body"
+                print("⚠️ \(http.statusCode) from \(path): \(body)")
+                throw URLError(.badServerResponse, userInfo: [NSLocalizedDescriptionKey: "Server error (\(http.statusCode))"])
+            }
+            return try decoder.decode(Response.self, from: data)
+        }
+
+        do {
+            // 1. POST /federal-loans/bulk
+            let federalPayload = FederalLoanBulkIn(
+                loans: onboardingState.confirmedFederalLoans.map { $0.toFederalLoanIn() }
+            )
+            let _: FederalLoanBulkOut = try await post(
+                path: "/federal-loans/bulk",
+                body: federalPayload,
+                as: FederalLoanBulkOut.self
+            )
+            print("We got past federal loan")
+
+            // 2. POST /private-loans/bulk
+            let privatePayload = PrivateLoanBulkIn(loans: onboardingState.privateLoans)
+            let _: PrivateLoanBulkOut = try await post(
+                path: "/private-loans/bulk",
+                body: privatePayload,
+                as: PrivateLoanBulkOut.self
+            )
+            print("We got past private pay load")
+
+            // 3. POST /job-offer
+            if let jobOffer = onboardingState.jobOffer {
+                let jobOut: JobOfferOut = try await post(
+                    path: "/job-offer",
+                    body: jobOffer,
+                    as: JobOfferOut.self
+                )
+                await MainActor.run { planVM.jobOffer = jobOut }
+            }
+            print("We got past job offer")
+            
+            // 4. POST /housing
+            if let housing = onboardingState.housing {
+                let housingOut: HousingOut = try await post(
+                    path: "/housing",
+                    body: housing,
+                    as: HousingOut.self
+                )
+                await MainActor.run { planVM.housing = housingOut }
+            }
+
+            // 5. POST /plan/calculate
+            await MainActor.run { planVM.monthlyExpenses = Decimal(onboardingState.monthlyExpenses) }
+            await planVM.recalculate()
+
+            await MainActor.run { transition(to: .main) }
+
+        } catch {
+            print("⚠️ Onboarding submission error: \(error.localizedDescription)")
+            await MainActor.run {
                 planVM.monthlyExpenses = Decimal(onboardingState.monthlyExpenses)
+                planVM.errorMessage = error.localizedDescription
                 transition(to: .main)
             }
         }
@@ -146,4 +248,3 @@ struct AppCoordinator: View {
         }
     }
 }
-

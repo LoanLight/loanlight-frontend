@@ -411,10 +411,13 @@ struct AuthField: View {
         HStack {
             if isSecure {
                 SecureField(placeholder, text: $text)
+                    .foregroundColor(.ink)
                     .font(AppFont.body)
                     .focused($focused)
+                    
             } else {
                 TextField(placeholder, text: $text)
+                    .foregroundColor(.ink)
                     .font(AppFont.body)
                     .keyboardType(keyboardType)
                     .textInputAutocapitalization(.never)

@@ -1,3 +1,8 @@
+//
+//  AuthViewModel.swift
+//  loanlight
+//
+
 import Foundation
 import Combine
 import SwiftUI
@@ -59,7 +64,7 @@ final class AuthViewModel: ObservableObject {
         return emailOk && pwOk && passwordsMatch
     }
 
-    // MARK: - Password strength UI (used by SignUpView)
+    // MARK: - Password strength UI
 
     var passwordStrength: Int {
         let pw = signUpData.password
@@ -74,18 +79,18 @@ final class AuthViewModel: ObservableObject {
     var strengthLabel: String {
         switch passwordStrength {
         case 0, 1: return "Weak"
-        case 2: return "Okay"
-        case 3: return "Strong"
-        default: return "Very strong"
+        case 2:    return "Okay"
+        case 3:    return "Strong"
+        default:   return "Very strong"
         }
     }
 
     var strengthColor: Color {
         switch passwordStrength {
         case 0, 1: return .red
-        case 2: return .orange
-        case 3: return .green
-        default: return .green
+        case 2:    return .orange
+        case 3:    return .green
+        default:   return .green
         }
     }
 
@@ -101,15 +106,10 @@ final class AuthViewModel: ObservableObject {
         errorMessage = nil
     }
 
-    func handleSignIn() {
-        Task { await signIn() }
-    }
+    func handleSignIn() { Task { await signIn() } }
+    func handleSignUp() { Task { await signUp() } }
 
-    func handleSignUp() {
-        Task { await signUp() }
-    }
-
-    // MARK: - Networking hooks (wire to your APIClient)
+    // MARK: - Sign In → POST /auth/login
 
     private func signIn() async {
         guard isSignInValid else { return }
@@ -117,21 +117,32 @@ final class AuthViewModel: ObservableObject {
         errorMessage = nil
         defer { isLoading = false }
 
-        // Backend expects ONLY email + password
-        _ = LoginRequest(
+        let payload = LoginRequest(
             email: signInData.email.trimmingCharacters(in: .whitespacesAndNewlines),
             password: signInData.password
         )
 
         do {
-            // TODO: Replace with your API client call
-            // let token: TokenResponse = try await API.shared.post("/auth/login", body: payload)
-            // TokenStore.save(token.accessToken)
+            let token: TokenResponse = try await APIClient.shared.post(
+                "/auth/login",
+                body: payload,
+                authenticated: false
+            )
+            TokenStore.save(token.accessToken)
             onAuthenticated?()
+        } catch let error as APIError {
+            switch error {
+            case .httpError(let code, _) where code == 401:
+                errorMessage = "Incorrect email or password."
+            default:
+                errorMessage = error.errorDescription
+            }
         } catch {
             errorMessage = "Sign in failed. Please try again."
         }
     }
+
+    // MARK: - Sign Up → POST /auth/signup
 
     private func signUp() async {
         guard isSignUpValid else { return }
@@ -139,17 +150,29 @@ final class AuthViewModel: ObservableObject {
         errorMessage = nil
         defer { isLoading = false }
 
-        // Backend expects ONLY email + password
         let payload = SignupRequest(
             email: signUpData.email.trimmingCharacters(in: .whitespacesAndNewlines),
             password: signUpData.password
         )
+        
+        print(payload)
 
         do {
-            // TODO: Replace with your API client call
-            // let token: TokenResponse = try await API.shared.post("/auth/signup", body: payload)
-            // TokenStore.save(token.accessToken)
+            let token: TokenResponse = try await APIClient.shared.post(
+                "/auth/signup",
+                body: payload,
+                authenticated: false
+            )
+            TokenStore.save(token.accessToken)
+            print(token.accessToken)
             onAuthenticated?()
+        } catch let error as APIError {
+            switch error {
+            case .httpError(let code, _) where code == 409:
+                errorMessage = "An account with this email already exists."
+            default:
+                errorMessage = error.errorDescription
+            }
         } catch {
             errorMessage = "Sign up failed. Please try again."
         }

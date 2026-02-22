@@ -20,15 +20,28 @@ struct JobOfferOut: Decodable, Identifiable {
     let baseSalary: Decimal
     let bonus: Decimal?
     let state: String
-    /// Computed by backend — this is what drives the plan screen
     let estimatedTakeHomeMonthly: Decimal
 
     enum CodingKeys: String, CodingKey {
         case id
-        case baseSalary                 = "base_salary"
+        case baseSalary               = "base_salary"
         case bonus
         case state
-        case estimatedTakeHomeMonthly   = "estimated_take_home_monthly"
+        case estimatedTakeHomeMonthly = "estimated_take_home_monthly"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func d(_ k: CodingKeys) -> Decimal {
+            if let s = try? c.decode(String.self, forKey: k), let v = Decimal(string: s) { return v }
+            return (try? c.decode(Decimal.self, forKey: k)) ?? 0
+        }
+        id                       = try c.decode(UUID.self, forKey: .id)
+        state                    = try c.decode(String.self, forKey: .state)
+        baseSalary               = d(.baseSalary)
+        let bonusStr             = try? c.decode(String.self, forKey: .bonus)
+        bonus                    = bonusStr.flatMap { Decimal(string: $0) }
+        estimatedTakeHomeMonthly = d(.estimatedTakeHomeMonthly)
     }
 }
 
@@ -55,7 +68,6 @@ struct HousingOut: Decodable, Identifiable {
     let state: String
     let bedroomCount: Int
     let housingType: String
-    /// Computed by HUD FMR API — what drives the plan screen
     let hudEstimatedRentMonthly: Decimal
 
     enum CodingKeys: String, CodingKey {
@@ -65,5 +77,17 @@ struct HousingOut: Decodable, Identifiable {
         case bedroomCount            = "bedroom_count"
         case housingType             = "housing_type"
         case hudEstimatedRentMonthly = "hud_estimated_rent_monthly"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id           = try c.decode(UUID.self, forKey: .id)
+        city         = try c.decode(String.self, forKey: .city)
+        state        = try c.decode(String.self, forKey: .state)
+        bedroomCount = try c.decode(Int.self, forKey: .bedroomCount)
+        housingType  = try c.decode(String.self, forKey: .housingType)
+        let rentStr  = try? c.decode(String.self, forKey: .hudEstimatedRentMonthly)
+        hudEstimatedRentMonthly = rentStr.flatMap { Decimal(string: $0) }
+            ?? (try? c.decode(Decimal.self, forKey: .hudEstimatedRentMonthly)) ?? 0
     }
 }
