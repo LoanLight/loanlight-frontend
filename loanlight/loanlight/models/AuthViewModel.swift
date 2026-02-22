@@ -123,7 +123,7 @@ final class AuthViewModel: ObservableObject {
         )
 
         do {
-            let token: TokenResponse = try await APIClient.post(path: "/auth/login", body: payload)
+            let token: TokenResponse = try await APIClient.post(path: "/auth/login", body: payload, authenticated: false)
             TokenStore.save(token.accessToken)
             onAuthenticated?()
         } catch {
@@ -143,7 +143,7 @@ final class AuthViewModel: ObservableObject {
         )
 
         do {
-            let token: TokenResponse = try await APIClient.post(path: "/auth/signup", body: payload)
+            let token: TokenResponse = try await APIClient.post(path: "/auth/signup", body: payload, authenticated: false)
             TokenStore.save(token.accessToken)
             onAuthenticated?()
         } catch {

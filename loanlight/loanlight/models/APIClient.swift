@@ -11,10 +11,10 @@ enum APIClient {
 
     static var baseURL: String = {
         #if targetEnvironment(simulator)
-        return "http://localhost:8000"
+        return "https://deck-ordering-presidential-awards.trycloudflare.com"
         #else
         // On device, use your machine's IP and ensure backend allows that host
-        return "http://localhost:8000"
+        return "https://deck-ordering-presidential-awards.trycloudflare.com"
         #endif
     }()
 
@@ -32,7 +32,8 @@ enum APIClient {
     }()
 
     /// POST JSON body to path and decode response as T.
-    static func post<T: Decodable, B: Encodable>(path: String, body: B) async throws -> T {
+    /// Set `authenticated: false` for auth routes (login/signup) so no Bearer token is sent.
+    static func post<T: Decodable, B: Encodable>(path: String, body: B, authenticated: Bool = true) async throws -> T {
         let url = URL(string: baseURL + path)!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -40,7 +41,7 @@ enum APIClient {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.httpBody = try encoder.encode(body)
 
-        if let token = TokenStore.accessToken {
+        if authenticated, let token = TokenStore.accessToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
