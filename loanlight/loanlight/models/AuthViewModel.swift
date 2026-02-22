@@ -109,7 +109,7 @@ final class AuthViewModel: ObservableObject {
         Task { await signUp() }
     }
 
-    // MARK: - Networking hooks (wire to your APIClient)
+    // MARK: - Networking (calls auth_routes.py)
 
     private func signIn() async {
         guard isSignInValid else { return }
@@ -117,19 +117,17 @@ final class AuthViewModel: ObservableObject {
         errorMessage = nil
         defer { isLoading = false }
 
-        // Backend expects ONLY email + password
-        _ = LoginRequest(
+        let payload = LoginRequest(
             email: signInData.email.trimmingCharacters(in: .whitespacesAndNewlines),
             password: signInData.password
         )
 
         do {
-            // TODO: Replace with your API client call
-            // let token: TokenResponse = try await API.shared.post("/auth/login", body: payload)
-            // TokenStore.save(token.accessToken)
+            let token: TokenResponse = try await APIClient.post(path: "/auth/login", body: payload)
+            TokenStore.save(token.accessToken)
             onAuthenticated?()
         } catch {
-            errorMessage = "Sign in failed. Please try again."
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Sign in failed. Please try again."
         }
     }
 
@@ -139,19 +137,17 @@ final class AuthViewModel: ObservableObject {
         errorMessage = nil
         defer { isLoading = false }
 
-        // Backend expects ONLY email + password
         let payload = SignupRequest(
             email: signUpData.email.trimmingCharacters(in: .whitespacesAndNewlines),
             password: signUpData.password
         )
 
         do {
-            // TODO: Replace with your API client call
-            // let token: TokenResponse = try await API.shared.post("/auth/signup", body: payload)
-            // TokenStore.save(token.accessToken)
+            let token: TokenResponse = try await APIClient.post(path: "/auth/signup", body: payload)
+            TokenStore.save(token.accessToken)
             onAuthenticated?()
         } catch {
-            errorMessage = "Sign up failed. Please try again."
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Sign up failed. Please try again."
         }
     }
 }

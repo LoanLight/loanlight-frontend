@@ -8,6 +8,7 @@ struct FederalLoansView: View {
 
     @StateObject private var viewModel = FederalLoansViewModel()
     @State private var showFilePicker = false
+    @State private var isSubmitting = false
 
     var body: some View {
         ZStack {
@@ -75,13 +76,37 @@ struct FederalLoansView: View {
                 })
             }
         }
-        .alert("Could Not Extract", isPresented: Binding(
+        .alert("Error", isPresented: Binding(
             get: { viewModel.errorMessage != nil },
             set: { if !$0 { viewModel.errorMessage = nil } }
         )) {
             Button("OK") { viewModel.errorMessage = nil }
         } message: {
             Text(viewModel.errorMessage ?? "")
+        }
+    }
+
+    // MARK: - Submit federal loans to backend (replace_all_federal_loans)
+
+    private func submitFederalLoans() {
+        let loans = viewModel.confirmedLoans
+        guard !loans.isEmpty else { return }
+        viewModel.errorMessage = nil
+        isSubmitting = true
+        Task {
+            defer { Task { @MainActor in isSubmitting = false } }
+            let payload = FederalLoanBulkIn(loans: loans.map { $0.toFederalLoanIn() })
+            do {
+                _ = try await APIClient.post(path: "/federal-loans/bulk", body: payload) as FederalLoanBulkOut
+            } catch {
+                await MainActor.run {
+                    viewModel.errorMessage = (error as? LocalizedError)?.errorDescription ?? "Could not save federal loans. Please try again."
+                }
+                return
+            }
+            await MainActor.run {
+                onComplete(viewModel.confirmedLoans)
+            }
         }
     }
 
@@ -250,12 +275,17 @@ struct FederalLoansView: View {
             }
 
             if !viewModel.confirmedLoans.isEmpty {
-                Button(action: { onComplete(viewModel.confirmedLoans) }) {
+                Button(action: { submitFederalLoans() }) {
                     HStack(spacing: 8) {
-                        Text("Continue")
-                            .font(AppFont.ctaButton)
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 14, weight: .bold))
+                        if isSubmitting {
+                            ProgressView()
+                                .tint(.ink)
+                        } else {
+                            Text("Continue")
+                                .font(AppFont.ctaButton)
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 14, weight: .bold))
+                        }
                     }
                     .foregroundColor(.ink)
                     .frame(maxWidth: .infinity)
@@ -263,6 +293,7 @@ struct FederalLoansView: View {
                     .background(Color.gold)
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
+                .disabled(isSubmitting)
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
