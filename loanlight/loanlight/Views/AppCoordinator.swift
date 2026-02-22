@@ -179,7 +179,6 @@ struct AppCoordinator: View {
 
         case .location:
             LocationView(currentStep: 6, totalSteps: 7, onContinue: { housingIn, expenses in
-                onboardingState.housing = housingIn
                 onboardingState.monthlyExpenses = expenses
                 transition(to: .onboarding(.loading))
             })
