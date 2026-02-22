@@ -1,11 +1,9 @@
 import SwiftUI
 
-/// Bottom sheet shown after PDF extraction.
-/// Lets the user review and edit the extracted fields before confirming.
+/// Sheet shown after PDF extraction — only the 3 fields the API needs
 struct LoanConfirmationSheet: View {
     @State var loan: LoanEntity
     var onConfirm: () -> Void
-
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -16,71 +14,43 @@ struct LoanConfirmationSheet: View {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
 
+                        // ── Badge ──────────────────────────────────────
                         HStack(spacing: 6) {
                             Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.success)
-                                .font(.system(size: 14))
-                            Text("Data extracted successfully")
+                                .foregroundColor(.sage)
+                                .font(.system(size: 13))
+                            Text("Fields extracted from PDF")
                                 .font(AppFont.captionBold)
-                                .foregroundColor(.success)
+                                .foregroundColor(.sage)
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(Color.success.opacity(0.08))
-                        .cornerRadius(10)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(Color.sage.opacity(0.10))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
                         .padding(.bottom, 20)
 
-                        Text("Review Loan Details")
-                            .font(AppFont.serif(22))
+                        Text("Confirm Loan Details")
+                            .font(AppFont.serif(24))
                             .foregroundColor(.ink)
                             .padding(.bottom, 6)
 
-                        Text("Tap any field to correct it.")
+                        Text("Only what's needed for your plan. Tap any field to edit.")
                             .font(AppFont.caption)
                             .foregroundColor(.mist)
                             .padding(.bottom, 24)
 
-                        // ── Editable fields ──────────────────────
-                        VStack(spacing: 1) {
-                            editRow(label: "Servicer",        value: $loan.servicer)
-                            editRow(label: "Loan Type",       value: $loan.loanType)
-                            editRow(label: "Total Balance",   value: $loan.totalBalance)
-                            editRow(label: "Interest Rate",   value: $loan.interestRate)
-                            editRow(label: "Monthly Payment", value: $loan.monthlyPayment)
-                            editRow(label: "Repayment Plan",  value: $loan.repaymentPlan)
-                            editRow(label: "Status",          value: $loan.loanStatus,     isLast: true)
+                        // ── The 3 fields the API needs ─────────────────
+                        VStack(spacing: 10) {
+                            EditableField(label: "LOAN TYPE / NAME", value: $loan.loanType,
+                                          placeholder: "e.g. Direct Subsidized")
+                            EditableField(label: "TOTAL BALANCE",    value: $loan.totalBalance,
+                                          placeholder: "e.g. 18750.00")
+                            EditableField(label: "INTEREST RATE",    value: $loan.interestRate,
+                                          placeholder: "e.g. 4.990")
+                            EditableField(label: "MIN MONTHLY PAYMENT", value: $loan.monthlyPayment,
+                                          placeholder: "e.g. 195.00 (0 if deferred)")
                         }
-                        .background(Color.white)
-                        .cornerRadius(16)
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.border, lineWidth: 1))
                         .padding(.bottom, 28)
-
-                        // ── Confirm button ───────────────────────
-                        Button(action: {
-                            onConfirm()
-                            dismiss()
-                        }) {
-                            Text("Confirm & Add Loan")
-                                .font(AppFont.ctaButton)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 17)
-                                .background(Color.sage)
-                                .clipShape(RoundedRectangle(cornerRadius: 14))
-                        }
-
-                        Button(action: { dismiss() }) {
-                            Text("Re-upload PDF")
-                                .font(AppFont.ctaButton)
-                                .foregroundColor(.ink)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 17)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .stroke(Color.border, lineWidth: 1.5)
-                                )
-                        }
-                        .padding(.top, 10)
                     }
                     .padding(24)
                 }
@@ -93,50 +63,33 @@ struct LoanConfirmationSheet: View {
                         .foregroundColor(.sage)
                 }
             }
-        }
-    }
-
-    // MARK: - Editable Row
-
-    private func editRow(
-        label: String,
-        value: Binding<String>,
-        prefix: String = "",
-        suffix: String = "",
-        isLast: Bool = false
-    ) -> some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .center, spacing: 12) {
-                Text(label)
-                    .font(AppFont.caption)
-                    .foregroundColor(.mist)
-                    .frame(width: 130, alignment: .leading)
-
-                HStack(spacing: 2) {
-                    if !prefix.isEmpty {
-                        Text(prefix)
-                            .font(AppFont.bodyMedium)
-                            .foregroundColor(.ink)
+            .safeAreaInset(edge: .bottom) {
+                VStack(spacing: 10) {
+                    Button(action: { onConfirm(); dismiss() }) {
+                        Text("Confirm & Add Loan")
+                            .font(AppFont.ctaButton)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 17)
+                            .background(Color.sage)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
-                    TextField("—", text: value)
-                        .font(AppFont.bodyMedium)
-                        .foregroundColor(.ink)
-                        .multilineTextAlignment(.trailing)
-                    if !suffix.isEmpty {
-                        Text(suffix)
-                            .font(AppFont.bodyMedium)
+                    Button(action: { dismiss() }) {
+                        Text("Re-upload PDF")
+                            .font(AppFont.body.weight(.medium))
                             .foregroundColor(.ink)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 17)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(Color.border, lineWidth: 1.5)
+                            )
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .trailing)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-
-            if !isLast {
-                Divider()
-                    .background(Color.border)
-                    .padding(.leading, 16)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
+                .padding(.top, 8)
+                .background(Color.paper)
             }
         }
     }
