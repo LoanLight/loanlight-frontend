@@ -1,10 +1,12 @@
+//
+//  PlanView.swift
+//  loanlight
+//
+
 import SwiftUI
 
 struct PlanView: View {
-    @StateObject private var vm = PlanViewModel()
-
-    // Shared formatter helpers
-    private static let currencyStyle = Decimal.FormatStyle.Currency(code: "USD")
+    @ObservedObject var vm: PlanViewModel
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -13,7 +15,7 @@ struct PlanView: View {
             ScrollView {
                 VStack(spacing: 0) {
 
-                    // ── 1. Graph ─────────
+                    // ── 1. Hero Chart ─────────────────────────────
                     HeroChartView(
                         series: vm.chartSeries,
                         investingEnabled: vm.investingEnabled,
@@ -21,24 +23,22 @@ struct PlanView: View {
                         monthsToFreedom: vm.planResponse?.monthsToFreedom ?? 0
                     )
 
-                    // ── Warnings (if any from backend) ────────────
+                    // ── Warnings ──────────────────────────────────
                     if let response = vm.planResponse, !response.warnings.isEmpty {
                         WarningsBannerView(warnings: response.warnings)
                             .padding(.top, 16)
                     }
 
-                    
-
-                    // ── 2. Investing toggle ────────────────────────
+                    // ── 2. Strategy ───────────────────────────────
                     sectionLabel("Strategy")
                     InvestingToggleView(
                         investingEnabled: $vm.investingEnabled,
                         riskLevel: $vm.riskLevel
                     )
                     .onChange(of: vm.investingEnabled) { _ in triggerRecalculate() }
-                    .onChange(of: vm.riskLevel) { _ in triggerRecalculate() }
+                    .onChange(of: vm.riskLevel)        { _ in triggerRecalculate() }
 
-                    // ── 3. Payment / Investment slider ─────────────
+                    // ── 3. Payment / Investment Slider ────────────
                     sectionLabel(vm.investingEnabled ? "Monthly Investment" : "Monthly Payment")
                     PaymentSliderView(
                         investingEnabled: vm.investingEnabled,
@@ -49,18 +49,16 @@ struct PlanView: View {
                         maxInvestment: vm.maxInvestmentAmount,
                         minimumLoanPayment: vm.planResponse?.cashflow.minimumLoanPayments ?? 0
                     )
-                    .onChange(of: vm.monthlyCommitment) { _ in triggerRecalculate() }
+                    .onChange(of: vm.monthlyCommitment)       { _ in triggerRecalculate() }
                     .onChange(of: vm.monthlyInvestmentAmount) { _ in triggerRecalculate() }
 
-                    
-
-                    // ── 4. Repayment strategy ──────────────────────
+                    // ── 4. Repayment Strategy ─────────────────────
                     RepaymentStrategyPickerView(selected: $vm.repaymentStrategy)
                         .onChange(of: vm.repaymentStrategy) { _ in triggerRecalculate() }
 
                     divider
-                    
-                    // ── 5. Cashflow breakdown ──────────────────────
+
+                    // ── 5. Cashflow ───────────────────────────────
                     sectionLabel("Your Money")
                     CashflowHeaderView(
                         takeHome: vm.jobOffer?.estimatedTakeHomeMonthly ?? 0,
@@ -68,11 +66,9 @@ struct PlanView: View {
                         expenses: $vm.monthlyExpenses,
                         available: vm.availableForLoansAndInvesting
                     )
-                    .onChange(of: vm.monthlyExpenses) { _ in
-                        triggerRecalculate()
-                    }
+                    .onChange(of: vm.monthlyExpenses) { _ in triggerRecalculate() }
 
-                    // ── 6. Results grid ────────────────────────────
+                    // ── 6. Results ────────────────────────────────
                     sectionLabel("Results")
                     if let response = vm.planResponse {
                         PlanResultsView(
@@ -83,7 +79,7 @@ struct PlanView: View {
                         resultsSkeletonView
                     }
 
-                    // ── Save CTA ───────────────────────────────────
+                    // ── Save CTA ──────────────────────────────────
                     savePlanView
                         .padding(.horizontal, 20)
                         .padding(.top, 16)
@@ -93,58 +89,21 @@ struct PlanView: View {
             }
             .refreshable { await vm.recalculate() }
 
-            // ── Loading overlay ────────────────────────────────
+            // ── Loading overlay ───────────────────────────────────
             if vm.isLoading {
                 loadingBanner
             }
-
         }
         .task { await vm.recalculate() }
         .alert("Something went wrong", isPresented: Binding(
             get: { vm.errorMessage != nil },
             set: { if !$0 { vm.errorMessage = nil } }
         )) {
-            Button("Retry") { Task { await vm.recalculate() } }
+            Button("Retry")   { Task { await vm.recalculate() } }
             Button("Dismiss", role: .cancel) { vm.errorMessage = nil }
         } message: {
             Text(vm.errorMessage ?? "")
         }
-    }
-
-    // MARK: - Header
-
-    private var headerView: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Your Plan")
-                    .font(AppFont.serif(24))
-                    .foregroundColor(.ink)
-                if let job = vm.jobOffer {
-                    Text(job.baseSalary.formatted(.currency(code: "USD").precision(.fractionLength(0))) + " · \(job.state)")
-                        .font(AppFont.caption)
-                        .foregroundColor(.mist)
-                }
-            }
-            Spacer()
-
-            // Mode badge — changes colour based on investing toggle
-            HStack(spacing: 5) {
-                Circle()
-                    .fill(vm.investingEnabled ? Color.gold : Color.sage)
-                    .frame(width: 6, height: 6)
-                Text(vm.investingEnabled ? "Investing" : "Debt First")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(vm.investingEnabled ? .gold : .sage)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(vm.investingEnabled ? Color.goldwash : Color.sagetint)
-            .clipShape(Capsule())
-            .animation(.easeInOut(duration: 0.2), value: vm.investingEnabled)
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
-        .padding(.bottom, 14)
     }
 
     // MARK: - Section Label
@@ -170,7 +129,7 @@ struct PlanView: View {
             .padding(.top, 16)
     }
 
-    // MARK: - Results Skeleton (while loading)
+    // MARK: - Results Skeleton
 
     private var resultsSkeletonView: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
@@ -198,8 +157,7 @@ struct PlanView: View {
             }) {
                 HStack(spacing: 8) {
                     Text("✦").font(.system(size: 14))
-                    Text("Save This Plan")
-                        .font(.system(size: 15, weight: .bold))
+                    Text("Save This Plan").font(AppFont.ctaButton)
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
@@ -220,7 +178,7 @@ struct PlanView: View {
                         .fill(vm.investingEnabled ? Color.gold : Color.sage)
                         .frame(width: 6, height: 6)
                     Text("Plan saved")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(AppFont.captionBold)
                         .foregroundColor(vm.investingEnabled ? .gold : .sage)
                 }
                 .transition(.opacity)
@@ -231,38 +189,35 @@ struct PlanView: View {
     // MARK: - Loading Banner
 
     private var loadingBanner: some View {
-        VStack {
-            Spacer()
-            HStack(spacing: 10) {
-                ProgressView().tint(.white).scaleEffect(0.85)
-                Text("Recalculating…")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.white)
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .background(Color.ink.opacity(0.88))
-            .cornerRadius(14)
-            .padding(.bottom, 100)
+        HStack(spacing: 10) {
+            ProgressView().tint(.white).scaleEffect(0.85)
+            Text("Recalculating…")
+                .font(AppFont.captionBold)
+                .foregroundColor(.white)
         }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(Color.ink.opacity(0.88))
+        .cornerRadius(14)
+        .padding(.bottom, 100)
         .transition(.opacity.combined(with: .move(edge: .bottom)))
     }
 
-    // MARK: - Recalculate debounced
+    // MARK: - Debounced Recalculate
 
     @State private var recalcTask: Task<Void, Never>? = nil
 
     private func triggerRecalculate() {
         recalcTask?.cancel()
         recalcTask = Task {
-            try? await Task.sleep(nanoseconds: 400_000_000) // 400ms debounce
+            try? await Task.sleep(nanoseconds: 400_000_000)
             guard !Task.isCancelled else { return }
             await vm.recalculate()
         }
     }
 }
 
-// MARK: - Shimmer effect for skeleton loader
+// MARK: - Shimmer Modifier
 
 extension View {
     func shimmer() -> some View {
@@ -278,9 +233,9 @@ struct ShimmerModifier: ViewModifier {
             .overlay(
                 LinearGradient(
                     gradient: Gradient(stops: [
-                        .init(color: .clear, location: phase - 0.3),
+                        .init(color: .clear,               location: phase - 0.3),
                         .init(color: .white.opacity(0.45), location: phase),
-                        .init(color: .clear, location: phase + 0.3),
+                        .init(color: .clear,               location: phase + 0.3),
                     ]),
                     startPoint: .leading,
                     endPoint: .trailing
@@ -295,8 +250,6 @@ struct ShimmerModifier: ViewModifier {
     }
 }
 
-// MARK: - Preview
-
 #Preview {
-    PlanView()
+    PlanView(vm: PlanViewModel())
 }

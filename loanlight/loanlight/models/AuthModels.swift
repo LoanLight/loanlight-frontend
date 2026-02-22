@@ -1,7 +1,6 @@
 import Foundation
 
-// MARK: - Auth Request/Response Models
-// Maps to: account_models.py
+// MARK: - Network DTOs (match backend)
 
 struct SignupRequest: Encodable {
     let email: String

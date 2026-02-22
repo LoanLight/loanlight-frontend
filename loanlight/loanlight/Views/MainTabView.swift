@@ -1,9 +1,16 @@
+//
+//  MainTabView.swift
+//  loanlight
+//
+
 import SwiftUI
 
 struct MainTabView: View {
+    @ObservedObject var planVM: PlanViewModel
+
     var body: some View {
         TabView {
-            PlanView()
+            PlanView(vm: planVM)
                 .tabItem {
                     Label("Plan", systemImage: "chart.line.uptrend.xyaxis")
                 }
