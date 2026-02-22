@@ -13,9 +13,13 @@ struct PlanView: View {
             ScrollView {
                 VStack(spacing: 0) {
 
-                    // ── Header ────────────────────────────────────
-                    headerView
-                    Divider().background(Color.border)
+                    // ── 1. Graph ─────────
+                    HeroChartView(
+                        series: vm.chartSeries,
+                        investingEnabled: vm.investingEnabled,
+                        freedomDate: vm.freedomDateFormatted,
+                        monthsToFreedom: vm.planResponse?.monthsToFreedom ?? 0
+                    )
 
                     // ── Warnings (if any from backend) ────────────
                     if let response = vm.planResponse, !response.warnings.isEmpty {
@@ -23,19 +27,7 @@ struct PlanView: View {
                             .padding(.top, 16)
                     }
 
-                    // ── 1. Cashflow breakdown ──────────────────────
-                    sectionLabel("Your Money")
-                    CashflowHeaderView(
-                        takeHome: vm.jobOffer?.estimatedTakeHomeMonthly ?? 0,
-                        rent: vm.housing?.hudEstimatedRentMonthly ?? 0,
-                        expenses: $vm.monthlyExpenses,
-                        available: vm.availableForLoansAndInvesting
-                    )
-                    .onChange(of: vm.monthlyExpenses) { _ in
-                        triggerRecalculate()
-                    }
-
-                    divider
+                    
 
                     // ── 2. Investing toggle ────────────────────────
                     sectionLabel("Strategy")
@@ -60,24 +52,25 @@ struct PlanView: View {
                     .onChange(of: vm.monthlyCommitment) { _ in triggerRecalculate() }
                     .onChange(of: vm.monthlyInvestmentAmount) { _ in triggerRecalculate() }
 
-                    divider
+                    
 
                     // ── 4. Repayment strategy ──────────────────────
                     RepaymentStrategyPickerView(selected: $vm.repaymentStrategy)
                         .onChange(of: vm.repaymentStrategy) { _ in triggerRecalculate() }
 
                     divider
-
-                    // ── 5. Projection chart ────────────────────────
-                    sectionLabel("Projection")
-                    PlanProjectionChartView(
-                        series: vm.chartSeries,
-                        investingEnabled: vm.investingEnabled,
-                        freedomDate: vm.freedomDateFormatted,
-                        monthsToFreedom: vm.planResponse?.monthsToFreedom ?? 0
+                    
+                    // ── 5. Cashflow breakdown ──────────────────────
+                    sectionLabel("Your Money")
+                    CashflowHeaderView(
+                        takeHome: vm.jobOffer?.estimatedTakeHomeMonthly ?? 0,
+                        rent: vm.housing?.hudEstimatedRentMonthly ?? 0,
+                        expenses: $vm.monthlyExpenses,
+                        available: vm.availableForLoansAndInvesting
                     )
-
-                    divider
+                    .onChange(of: vm.monthlyExpenses) { _ in
+                        triggerRecalculate()
+                    }
 
                     // ── 6. Results grid ────────────────────────────
                     sectionLabel("Results")
