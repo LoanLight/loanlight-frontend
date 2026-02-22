@@ -2,7 +2,7 @@ import Foundation
 import Combine
 import SwiftUI
 
-// MARK: - UI-only form state (NOT sent to backend)
+// MARK: - UI-only form state
 
 struct SignInFormData {
     var email: String = ""
@@ -22,23 +22,17 @@ struct SignUpFormData {
 @MainActor
 final class AuthViewModel: ObservableObject {
 
-    // Navigation between Sign In / Sign Up
     @Published var showSignUp: Bool = false
-
-    // Form data used by the views
     @Published var signInData = SignInFormData()
     @Published var signUpData = SignUpFormData()
 
-    // UI flags
     @Published var showSignInPassword: Bool = false
     @Published var showSignUpPassword: Bool = false
     @Published var showConfirmPassword: Bool = false
 
-    // Loading + error
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
 
-    // Callback set by AuthFlowView
     var onAuthenticated: (() -> Void)?
 
     // MARK: - Validation
@@ -59,8 +53,6 @@ final class AuthViewModel: ObservableObject {
         return emailOk && pwOk && passwordsMatch
     }
 
-    // MARK: - Password strength UI (used by SignUpView)
-
     var passwordStrength: Int {
         let pw = signUpData.password
         var score = 0
@@ -74,42 +66,28 @@ final class AuthViewModel: ObservableObject {
     var strengthLabel: String {
         switch passwordStrength {
         case 0, 1: return "Weak"
-        case 2: return "Okay"
-        case 3: return "Strong"
-        default: return "Very strong"
+        case 2:    return "Okay"
+        case 3:    return "Strong"
+        default:   return "Very strong"
         }
     }
 
     var strengthColor: Color {
         switch passwordStrength {
         case 0, 1: return .red
-        case 2: return .orange
-        case 3: return .green
-        default: return .green
+        case 2:    return .orange
+        default:   return .green
         }
     }
 
-    // MARK: - View actions
+    // MARK: - Actions
 
-    func switchToSignUp() {
-        withAnimation { showSignUp = true }
-        errorMessage = nil
-    }
+    func switchToSignUp() { withAnimation { showSignUp = true }; errorMessage = nil }
+    func switchToSignIn() { withAnimation { showSignUp = false }; errorMessage = nil }
+    func handleSignIn()   { Task { await signIn() } }
+    func handleSignUp()   { Task { await signUp() } }
 
-    func switchToSignIn() {
-        withAnimation { showSignUp = false }
-        errorMessage = nil
-    }
-
-    func handleSignIn() {
-        Task { await signIn() }
-    }
-
-    func handleSignUp() {
-        Task { await signUp() }
-    }
-
-    // MARK: - Networking hooks (wire to your APIClient)
+    // MARK: - Sign In
 
     private func signIn() async {
         guard isSignInValid else { return }
@@ -117,21 +95,21 @@ final class AuthViewModel: ObservableObject {
         errorMessage = nil
         defer { isLoading = false }
 
-        // Backend expects ONLY email + password
-        _ = LoginRequest(
+        let payload = LoginRequest(
             email: signInData.email.trimmingCharacters(in: .whitespacesAndNewlines),
             password: signInData.password
         )
 
         do {
-            // TODO: Replace with your API client call
-            // let token: TokenResponse = try await API.shared.post("/auth/login", body: payload)
-            // TokenStore.save(token.accessToken)
+            let token: TokenResponse = try await APIClient.post(path: "/auth/login", body: payload)
+            TokenStore.save(token.accessToken)
             onAuthenticated?()
         } catch {
-            errorMessage = "Sign in failed. Please try again."
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Sign in failed. Please check your credentials."
         }
     }
+
+    // MARK: - Sign Up
 
     private func signUp() async {
         guard isSignUpValid else { return }
@@ -139,19 +117,17 @@ final class AuthViewModel: ObservableObject {
         errorMessage = nil
         defer { isLoading = false }
 
-        // Backend expects ONLY email + password
         let payload = SignupRequest(
             email: signUpData.email.trimmingCharacters(in: .whitespacesAndNewlines),
             password: signUpData.password
         )
 
         do {
-            // TODO: Replace with your API client call
-            // let token: TokenResponse = try await API.shared.post("/auth/signup", body: payload)
-            // TokenStore.save(token.accessToken)
+            let token: TokenResponse = try await APIClient.post(path: "/auth/signup", body: payload)
+            TokenStore.save(token.accessToken)
             onAuthenticated?()
         } catch {
-            errorMessage = "Sign up failed. Please try again."
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Sign up failed. Please try again."
         }
     }
 }
