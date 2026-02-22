@@ -11,7 +11,7 @@ import SwiftUI
 struct loanlightApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AppCoordinator()  // ← change from ContentView()
         }
     }
 }
