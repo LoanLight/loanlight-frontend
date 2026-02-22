@@ -1,5 +1,4 @@
 import Vision
-import UIKit
 import PDFKit
 import Foundation
 

@@ -124,8 +124,8 @@ struct SignInView: View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color.primary,                 // sage
-                    Color.primary.opacity(0.88)    // sage-ish
+                    Color.primary,
+                    Color.primary.opacity(0.88)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -153,7 +153,7 @@ struct SignInView: View {
 
             // App name
             VStack(spacing: 6) {
-                Text("LoanPath")
+                Text("LoanLight")
                     .padding(.top, 50)
                     .font(AppFont.serif(30))
                     .foregroundColor(.white)
@@ -412,10 +412,12 @@ struct AuthField: View {
             if isSecure {
                 SecureField(placeholder, text: $text)
                     .font(AppFont.body)
+                    .foregroundColor(.ink)
                     .focused($focused)
             } else {
                 TextField(placeholder, text: $text)
                     .font(AppFont.body)
+                    .foregroundColor(.ink)
                     .keyboardType(keyboardType)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
