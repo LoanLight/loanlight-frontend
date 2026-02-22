@@ -98,8 +98,6 @@ struct PlanView: View {
                 loadingBanner
             }
 
-            // ── Bottom Nav ─────────────────────────────────────
-            MainBottomNavView()
         }
         .task { await vm.recalculate() }
         .alert("Something went wrong", isPresented: Binding(

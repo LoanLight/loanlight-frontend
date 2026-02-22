@@ -20,7 +20,7 @@ struct AppCoordinator: View {
                 }
             }
         case .main:
-            PlanView()
+            MainTabView()
         }
     }
 }
