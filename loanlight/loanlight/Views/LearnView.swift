@@ -1,9 +1,13 @@
 import SwiftUI
+import AVFoundation
+import Combine
 
 // MARK: - Data Models
 
-struct Lesson: Identifiable {
-    let id = UUID()
+struct Lesson: Identifiable, Hashable {
+    // Stable string ID — avoids UUID() regenerating on every struct copy,
+    // which would break SwiftUI identity and navigationDestination(item:).
+    let id: String
     let title: String
     let promise: String
     let readMinutes: Int
@@ -12,6 +16,9 @@ struct Lesson: Identifiable {
     let bodyText: String
     let actionLabel: String?
     let isStartHere: Bool
+
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
+    static func == (lhs: Lesson, rhs: Lesson) -> Bool { lhs.id == rhs.id }
 }
 
 enum LessonTopic: String, CaseIterable {
@@ -46,7 +53,7 @@ enum LessonTopic: String, CaseIterable {
 
 struct LessonLibrary {
     static let all: [Lesson] = [
-        Lesson(title: "Student Loans 101",
+        Lesson(id: "student-loans-101", title: "Student Loans 101",
                promise: "Understand what you owe and why it matters in 5 minutes.",
                readMinutes: 4, topic: .debt,
                keyTakeaways: [
@@ -59,7 +66,7 @@ struct LessonLibrary {
                bodyText: "Most people leave school with loans but no real map. You know the number — but not why it moves, how the interest stacks, or what your repayment options mean for your life. This lesson gives you that map in plain English.",
                actionLabel: "See your loan details", isStartHere: true),
 
-        Lesson(title: "Avalanche vs Snowball vs Hybrid",
+        Lesson(id: "avalanche-snowball-hybrid", title: "Avalanche vs Snowball vs Hybrid",
                promise: "Know which payoff strategy fits you in 5 minutes.",
                readMinutes: 5, topic: .debt,
                keyTakeaways: [
@@ -72,7 +79,7 @@ struct LessonLibrary {
                bodyText: "The internet makes this sound like a math test. It's not. It's a personality test. Here's what actually separates the three strategies — and how to pick yours.",
                actionLabel: "Try each strategy on your loans", isStartHere: true),
 
-        Lesson(title: "What Does 'Risk Level' Mean?",
+        Lesson(id: "what-is-risk-level", title: "What Does 'Risk Level' Mean?",
                promise: "Decode low / moderate / high risk in plain English.",
                readMinutes: 3, topic: .investing,
                keyTakeaways: [
@@ -85,7 +92,7 @@ struct LessonLibrary {
                bodyText: "Risk in investing isn't about being reckless. It's about the tradeoff between short-term volatility and long-term return. A higher risk tolerance means you can let the number drop for a year without selling — and that patience gets rewarded.",
                actionLabel: "Adjust risk level in your plan", isStartHere: true),
 
-        Lesson(title: "How Investing Grows Over Time",
+        Lesson(id: "investing-grows-over-time", title: "How Investing Grows Over Time",
                promise: "See why starting early matters more than investing a lot.",
                readMinutes: 4, topic: .investing,
                keyTakeaways: [
@@ -98,7 +105,7 @@ struct LessonLibrary {
                bodyText: "Everyone says 'start early.' Almost no one explains why with numbers. Here's the honest math behind the most repeated advice in personal finance.",
                actionLabel: "Toggle investing in your plan", isStartHere: true),
 
-        Lesson(title: "What Happens When You Pay Extra?",
+        Lesson(id: "pay-extra", title: "What Happens When You Pay Extra?",
                promise: "See how $100/month extra changes your payoff date and total cost.",
                readMinutes: 4, topic: .debt,
                keyTakeaways: [
@@ -111,7 +118,7 @@ struct LessonLibrary {
                bodyText: "You don't need a windfall to get ahead on your loans. Small extra payments compound into significant savings when applied early.",
                actionLabel: "Move the payment slider", isStartHere: false),
 
-        Lesson(title: "Interest Explained With One Example",
+        Lesson(id: "interest-explained", title: "Interest Explained With One Example",
                promise: "Understand exactly how your daily interest is calculated.",
                readMinutes: 3, topic: .debt,
                keyTakeaways: [
@@ -124,7 +131,7 @@ struct LessonLibrary {
                bodyText: "Interest feels abstract until you see it as a daily number. Once you do, the urgency of extra payments and the value of income-driven protections becomes obvious.",
                actionLabel: nil, isStartHere: false),
 
-        Lesson(title: "Invest While Paying Minimums: When It Helps",
+        Lesson(id: "invest-while-paying-minimums", title: "Invest While Paying Minimums: When It Helps",
                promise: "The math behind paying debt AND investing at the same time.",
                readMinutes: 5, topic: .investing,
                keyTakeaways: [
@@ -137,7 +144,7 @@ struct LessonLibrary {
                bodyText: "This is the most argued topic in personal finance forums. The honest answer: it depends on your rate, return assumption, and your relationship with uncertainty.",
                actionLabel: "Compare strategies in your plan", isStartHere: false),
 
-        Lesson(title: "Risk & Volatility Explained",
+        Lesson(id: "risk-volatility", title: "Risk & Volatility Explained",
                promise: "Why your balance goes down sometimes — and why that's fine.",
                readMinutes: 4, topic: .investing,
                keyTakeaways: [
@@ -150,7 +157,7 @@ struct LessonLibrary {
                bodyText: "Watching your portfolio drop is uncomfortable. Here's why that discomfort is the price of higher long-term returns.",
                actionLabel: "Change your risk level", isStartHere: false),
 
-        Lesson(title: "Essentials vs. Discretionary: No Shame",
+        Lesson(id: "essentials-vs-discretionary", title: "Essentials vs. Discretionary: No Shame",
                promise: "Estimate your monthly expenses without a spreadsheet.",
                readMinutes: 3, topic: .budgeting,
                keyTakeaways: [
@@ -163,7 +170,7 @@ struct LessonLibrary {
                bodyText: "Budgeting gets moralized in personal finance. This isn't that. This is just: what comes in, what goes out, what's left.",
                actionLabel: nil, isStartHere: false),
 
-        Lesson(title: "What If Rent Changes?",
+        Lesson(id: "rent-changes", title: "What If Rent Changes?",
                promise: "How a rent increase or move affects your whole financial plan.",
                readMinutes: 3, topic: .budgeting,
                keyTakeaways: [
@@ -176,7 +183,7 @@ struct LessonLibrary {
                bodyText: "Where you live is the single biggest financial lever most people have. Here's how to think about that decision in the context of your debt and investment goals.",
                actionLabel: "Adjust your monthly commitment", isStartHere: false),
 
-        Lesson(title: "Your First Salary: What to Do First",
+        Lesson(id: "first-salary", title: "Your First Salary: What to Do First",
                promise: "A clear order of operations for your first real paycheck.",
                readMinutes: 5, topic: .lifeAfter,
                keyTakeaways: [
@@ -189,7 +196,7 @@ struct LessonLibrary {
                bodyText: "First salary is exciting and overwhelming. Here's a simple priority order that applies to most new grads — with the logic behind each step.",
                actionLabel: nil, isStartHere: false),
 
-        Lesson(title: "Taxes After Graduation: The Basics",
+        Lesson(id: "taxes-after-grad", title: "Taxes After Graduation: The Basics",
                promise: "Three things every new grad needs to know about taxes.",
                readMinutes: 4, topic: .lifeAfter,
                keyTakeaways: [
@@ -202,7 +209,7 @@ struct LessonLibrary {
                bodyText: "Nobody teaches you taxes in school. Here's the minimum you need to know to not get surprised — and to make smarter decisions about where to put your money.",
                actionLabel: nil, isStartHere: false),
 
-        Lesson(title: "Credit Score: What Actually Moves It",
+        Lesson(id: "credit-score", title: "Credit Score: What Actually Moves It",
                promise: "The 5 factors — ranked by how much they actually matter.",
                readMinutes: 4, topic: .credit,
                keyTakeaways: [
@@ -219,13 +226,12 @@ struct LessonLibrary {
     static var startHere: [Lesson] { all.filter { $0.isStartHere } }
     static func lessons(for topic: LessonTopic) -> [Lesson] { all.filter { $0.topic == topic } }
     static func recommended(investingEnabled: Bool) -> [Lesson] {
-        investingEnabled
-            ? all.filter { $0.topic == .investing && !$0.isStartHere }
-            : all.filter { $0.topic == .debt && !$0.isStartHere }
+        let topic: LessonTopic = investingEnabled ? .investing : .debt
+        let nonStartHere = all.filter { $0.topic == topic && !$0.isStartHere }
+        return nonStartHere.count >= 2 ? nonStartHere : all.filter { $0.topic == topic }
     }
 }
 
-// MARK: - LearnView
 
 struct LearnView: View {
     @State private var searchText    = ""
@@ -260,13 +266,15 @@ struct LearnView: View {
             }
             .background(Color.paper)
             .navigationBarHidden(true)
-            .sheet(item: $selectedLesson) { lesson in
+            // Use navigationDestination instead of .sheet so the detail
+            // view gets a proper back button in the nav stack.
+            .navigationDestination(item: $selectedLesson) { lesson in
                 LessonDetailView(lesson: lesson)
             }
         }
     }
 
-    // MARK: - Sections (broken out to fix type-checker)
+    // MARK: - Sections
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -309,12 +317,44 @@ struct LearnView: View {
 
     private var filteredSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if !searchText.isEmpty {
-                LearnSectionHeader(
-                    title: "\(filteredLessons.count) result\(filteredLessons.count == 1 ? "" : "s")",
-                    subtitle: nil
-                )
+            HStack(spacing: 8) {
+                if let topic = selectedTopic {
+                    HStack(spacing: 6) {
+                        Image(systemName: topic.icon).font(.system(size: 11, weight: .semibold))
+                        Text(topic.rawValue).font(AppFont.microBold)
+                        Button {
+                            withAnimation(.spring(response: 0.3)) { selectedTopic = nil }
+                        } label: {
+                            Image(systemName: "xmark").font(.system(size: 10, weight: .bold))
+                        }
+                    }
+                    .foregroundColor(topic.color)
+                    .padding(.horizontal, 12).padding(.vertical, 7)
+                    .background(topic.color.opacity(0.12))
+                    .clipShape(Capsule())
+                }
+
+                Text("\(filteredLessons.count) result\(filteredLessons.count == 1 ? "" : "s")")
+                    .font(AppFont.caption)
+                    .foregroundColor(.mist)
+
+                Spacer()
+
+                Button {
+                    withAnimation {
+                        searchText = ""
+                        selectedTopic = nil
+                    }
+                } label: {
+                    Text("Clear all")
+                        .font(AppFont.caption)
+                        .foregroundColor(.mist)
+                        .underline()
+                }
             }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 16)
+
             LessonListSection(lessons: filteredLessons, onTap: { selectedLesson = $0 })
                 .padding(.bottom, 40)
         }
@@ -356,7 +396,6 @@ struct LearnView: View {
     }
 }
 
-// MARK: - Reusable Sub-Views
 
 struct LearnSectionHeader: View {
     let title: String
@@ -428,7 +467,6 @@ struct LessonListSection: View {
     }
 }
 
-// MARK: - Start Here Card
 
 struct StartHereCard: View {
     let lesson: Lesson
@@ -474,7 +512,6 @@ struct StartHereCard: View {
     }
 }
 
-// MARK: - Topic Chip
 
 struct TopicChip: View {
     let topic: LessonTopic
@@ -492,7 +529,6 @@ struct TopicChip: View {
     }
 }
 
-// MARK: - Lesson Row
 
 struct LessonRow: View {
     let lesson: Lesson
@@ -516,35 +552,48 @@ struct LessonRow: View {
     }
 }
 
-// MARK: - Lesson Detail View
-
 struct LessonDetailView: View {
     let lesson: Lesson
     @Environment(\.dismiss) var dismiss
+    @StateObject private var tts = ElevenLabsService()
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    detailHeader
-                    detailBody
-                    takeawaysCard
-                    actionButton
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 24)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                detailHeader
+                detailBody
+                takeawaysCard
+                actionButton
             }
-            .background(Color.paper)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 22))
-                            .foregroundColor(.mist)
+            .padding(.horizontal, 20)
+            .padding(.top, 24)
+        }
+        .background(Color.paper)
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button { dismiss() } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Learn")
+                            .font(AppFont.body)
                     }
+                    .foregroundColor(.sage)
                 }
             }
+
+        }
+        .onDisappear { tts.stop() }
+        .alert("Audio Error", isPresented: Binding(
+            get: { if case .error = tts.playbackState { return true }; return false },
+            set: { if !$0 { tts.stop() } }
+        )) {
+            Button("OK") { tts.stop() }
+        } message: {
+            if case .error(let msg) = tts.playbackState { Text(msg) }
         }
     }
 
@@ -573,7 +622,13 @@ struct LessonDetailView: View {
                 .foregroundColor(.mist)
                 .padding(.bottom, 28)
 
-            Rectangle().fill(Color.border).frame(height: 1).padding(.bottom, 28)
+            Rectangle().fill(Color.border).frame(height: 1).padding(.bottom, 20)
+
+            // ── Inline listen button ──────────────────────────────────
+            InlineTTSRow(state: tts.playbackState) {
+                tts.toggle(lesson: lesson)
+            }
+            .padding(.bottom, 28)
         }
     }
 
@@ -620,7 +675,7 @@ struct LessonDetailView: View {
     @ViewBuilder
     private var actionButton: some View {
         if let label = lesson.actionLabel {
-            Button { dismiss() } label: {
+            NavigationLink(destination: PlanView()) {
                 HStack(spacing: 8) {
                     Text(label).font(AppFont.ctaButton)
                     Image(systemName: "arrow.right").font(.system(size: 14, weight: .semibold))
@@ -636,11 +691,216 @@ struct LessonDetailView: View {
     }
 }
 
-// MARK: - AppFont extensions (delete if already in your Theme)
+
+struct InlineTTSRow: View {
+    let state: TTSPlaybackState
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                // Icon circle
+                ZStack {
+                    Circle()
+                        .fill(iconBackground)
+                        .frame(width: 36, height: 36)
+
+                    if case .loading = state {
+                        ProgressView()
+                            .scaleEffect(0.65)
+                            .tint(.white)
+                    } else {
+                        Image(systemName: iconName)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(labelText)
+                        .font(AppFont.bodyBold)
+                        .foregroundColor(.ink)
+                    Text(sublabelText)
+                        .font(AppFont.caption)
+                        .foregroundColor(.mist)
+                }
+
+                Spacer()
+
+                // Animated sound wave when playing
+                if case .playing = state {
+                    SoundWaveView()
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(iconBackground.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(iconBackground.opacity(0.25), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var iconName: String {
+        switch state {
+        case .idle:    return "headphones"
+        case .loading: return "headphones"
+        case .playing: return "pause.fill"
+        case .paused:  return "play.fill"
+        case .error:   return "exclamationmark"
+        }
+    }
+
+    private var iconBackground: Color {
+        switch state {
+        case .playing:          return .sage
+        case .loading:          return .sage
+        case .paused:           return .sage
+        case .error:            return Color(hex: "#C47C5A")
+        case .idle:             return Color(hex: "#6B7280")
+        }
+    }
+
+    private var labelText: String {
+        switch state {
+        case .idle:    return "Listen to this lesson"
+        case .loading: return "Loading audio…"
+        case .playing: return "Now playing"
+        case .paused:  return "Paused — tap to resume"
+        case .error:   return "Audio unavailable"
+        }
+    }
+
+    private var sublabelText: String {
+        switch state {
+        case .idle:    return "Powered by ElevenLabs"
+        case .loading: return "Fetching voice audio"
+        case .playing: return "Tap to pause"
+        case .paused:  return "Powered by ElevenLabs"
+        case .error:   return "Check your API key"
+        }
+    }
+}
+
+// Animated three-bar sound wave shown while audio plays
+struct SoundWaveView: View {
+    @State private var heights: [CGFloat] = [6, 14, 10]
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<3, id: \.self) { i in
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color.sage)
+                    .frame(width: 3, height: heights[i])
+                    .animation(
+                        .easeInOut(duration: 0.4 + Double(i) * 0.1)
+                        .repeatForever(autoreverses: true)
+                        .delay(Double(i) * 0.15),
+                        value: heights[i]
+                    )
+            }
+        }
+        .frame(width: 20, height: 20)
+        .onAppear {
+            heights = [14, 6, 12]
+        }
+    }
+}
+
+// MARK: - TTS Toolbar Button
+
+struct TTSButton: View {
+    let state: TTSPlaybackState
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                // Pulsing ring while loading
+                if case .loading = state {
+                    Circle()
+                        .stroke(Color.sage.opacity(0.3), lineWidth: 2)
+                        .frame(width: 34, height: 34)
+                        .scaleEffect(pulseScale)
+                        .opacity(pulseOpacity)
+                        .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulseScale)
+                }
+
+                Circle()
+                    .fill(iconBackground)
+                    .frame(width: 32, height: 32)
+
+                Group {
+                    if case .loading = state {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .tint(.white)
+                    } else {
+                        Image(systemName: iconName)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                }
+            }
+        }
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    // Dummy state for animation trigger — real pulse driven by .onAppear
+    @State private var pulseScale: CGFloat = 1.0
+    @State private var pulseOpacity: Double = 0.6
+
+    private var iconName: String {
+        switch state {
+        case .idle:             return "headphones"
+        case .loading:          return "headphones"
+        case .playing:          return "pause.fill"
+        case .paused:           return "play.fill"
+        case .error:            return "exclamationmark"
+        }
+    }
+
+    private var iconBackground: Color {
+        switch state {
+        case .playing:          return .sage
+        case .loading:          return .sage.opacity(0.7)
+        case .error:            return Color(hex: "#C47C5A")
+        default:                return Color.mist.opacity(0.4)
+        }
+    }
+
+    private var accessibilityLabel: String {
+        switch state {
+        case .idle:             return "Listen to this lesson"
+        case .loading:          return "Loading audio"
+        case .playing:          return "Pause audio"
+        case .paused:           return "Resume audio"
+        case .error:            return "Audio error"
+        }
+    }
+}
+
+// MARK: - AppFont extension (delete if already in your Theme file)
 
 extension AppFont {
     static func serifBold(_ size: CGFloat) -> Font { .custom("Georgia-Bold", size: size) }
 }
 
+// MARK: - Preview
 
+#Preview("Learn – Home") {
+    LearnView(investingEnabled: true)
+}
 
+#Preview("Learn – Investing Off") {
+    LearnView(investingEnabled: false)
+}
+
+#Preview("Lesson Detail") {
+    NavigationStack {
+        LessonDetailView(lesson: LessonLibrary.all[0])
+    }
+}

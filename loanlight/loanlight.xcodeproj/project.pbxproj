@@ -6,13 +6,33 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		14B915322F4AF03A00266588 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 14B915312F4AF02F00266588 /* .gitignore */; };
+		14B915352F4AF06D00266588 /* Secrets.xcconfig in Sources */ = {isa = PBXBuildFile; fileRef = 14B915332F4AF06700266588 /* Secrets.xcconfig */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		14B913F62F4A471D00266588 /* loanlight.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = loanlight.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		14B915312F4AF02F00266588 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		14B915332F4AF06700266588 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		14B915372F4AF0D100266588 /* Exceptions for "loanlight" folder in "loanlight" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 14B913F52F4A471D00266588 /* loanlight */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		14B913F82F4A471D00266588 /* loanlight */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				14B915372F4AF0D100266588 /* Exceptions for "loanlight" folder in "loanlight" target */,
+			);
 			path = loanlight;
 			sourceTree = "<group>";
 		};
@@ -34,6 +54,8 @@
 			children = (
 				14B913F82F4A471D00266588 /* loanlight */,
 				14B913F72F4A471D00266588 /* Products */,
+				14B915312F4AF02F00266588 /* .gitignore */,
+				14B915332F4AF06700266588 /* Secrets.xcconfig */,
 			);
 			sourceTree = "<group>";
 		};
@@ -109,6 +131,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				14B915322F4AF03A00266588 /* .gitignore in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -119,6 +142,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				14B915352F4AF06D00266588 /* Secrets.xcconfig in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -127,6 +151,7 @@
 /* Begin XCBuildConfiguration section */
 		14B913FF2F4A471E00266588 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 14B915332F4AF06700266588 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -189,6 +214,7 @@
 		};
 		14B914002F4A471E00266588 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 14B915332F4AF06700266588 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -254,6 +280,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = loanlight/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -298,6 +325,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = loanlight/Info.plist;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
