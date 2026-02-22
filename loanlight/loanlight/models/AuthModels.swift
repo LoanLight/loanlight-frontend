@@ -1,6 +1,11 @@
+//
+//  AuthModels.swift
+//  loanlight
+//
+
 import Foundation
 
-// MARK: - Network DTOs (match backend)
+// MARK: - Requests
 
 struct SignupRequest: Encodable {
     let email: String
@@ -12,6 +17,8 @@ struct LoginRequest: Encodable {
     let password: String
 }
 
+// MARK: - Responses
+
 struct TokenResponse: Decodable {
     let accessToken: String
     let tokenType: String
@@ -20,6 +27,12 @@ struct TokenResponse: Decodable {
         case accessToken = "access_token"
         case tokenType   = "token_type"
     }
+}
+
+struct ProfileCompleteResponse: Decodable {
+    let complete: Bool
+    let missing: [String]
+    let message: String?
 }
 
 struct AccountResponse: Decodable, Identifiable {

@@ -1,8 +1,3 @@
-//
-//  PlanView.swift
-//  loanlight
-//
-
 import SwiftUI
 
 struct PlanView: View {
@@ -15,7 +10,7 @@ struct PlanView: View {
             ScrollView {
                 VStack(spacing: 0) {
 
-                    // ── 1. Hero Chart ─────────────────────────────
+                    // ── 1. Hero Chart ──────────────────────────────────
                     HeroChartView(
                         series: vm.chartSeries,
                         investingEnabled: vm.investingEnabled,
@@ -23,13 +18,13 @@ struct PlanView: View {
                         monthsToFreedom: vm.planResponse?.monthsToFreedom ?? 0
                     )
 
-                    // ── Warnings ──────────────────────────────────
+                    // ── Warnings ───────────────────────────────────────
                     if let response = vm.planResponse, !response.warnings.isEmpty {
                         WarningsBannerView(warnings: response.warnings)
                             .padding(.top, 16)
                     }
 
-                    // ── 2. Strategy ───────────────────────────────
+                    // ── 2. Strategy ────────────────────────────────────
                     sectionLabel("Strategy")
                     InvestingToggleView(
                         investingEnabled: $vm.investingEnabled,
@@ -38,7 +33,7 @@ struct PlanView: View {
                     .onChange(of: vm.investingEnabled) { _ in triggerRecalculate() }
                     .onChange(of: vm.riskLevel)        { _ in triggerRecalculate() }
 
-                    // ── 3. Payment / Investment Slider ────────────
+                    // ── 3. Monthly Commitment Slider ───────────────────
                     sectionLabel(vm.investingEnabled ? "Monthly Investment" : "Monthly Payment")
                     PaymentSliderView(
                         investingEnabled: vm.investingEnabled,
@@ -52,34 +47,42 @@ struct PlanView: View {
                     .onChange(of: vm.monthlyCommitment)       { _ in triggerRecalculate() }
                     .onChange(of: vm.monthlyInvestmentAmount) { _ in triggerRecalculate() }
 
-                    // ── 4. Repayment Strategy ─────────────────────
+                    // ── 4. Repayment Strategy ──────────────────────────
                     RepaymentStrategyPickerView(selected: $vm.repaymentStrategy)
                         .onChange(of: vm.repaymentStrategy) { _ in triggerRecalculate() }
 
                     divider
 
-                    // ── 5. Cashflow ───────────────────────────────
+                    // ── 5. Cashflow ────────────────────────────────────
                     sectionLabel("Your Money")
                     CashflowHeaderView(
-                        takeHome: vm.jobOffer?.estimatedTakeHomeMonthly ?? 0,
-                        rent: vm.housing?.hudEstimatedRentMonthly ?? 0,
+                        takeHome: vm.jobOffer?.estimatedTakeHomeMonthly ?? (vm.planResponse?.cashflow.takeHomeMonthly ?? 0),
+                        rent: vm.housing?.hudEstimatedRentMonthly ?? (vm.planResponse?.cashflow.rentMonthly ?? 0),
                         expenses: $vm.monthlyExpenses,
                         available: vm.availableForLoansAndInvesting
                     )
-                    .onChange(of: vm.monthlyExpenses) { _ in triggerRecalculate() }
+                    .onChange(of: vm.monthlyExpenses) { _ in
+                        // When expenses change, re-fetch limits first, then recalculate
+                        Task {
+                            await vm.fetchLimits()
+                            await vm.recalculate()
+                        }
+                    }
 
-                    // ── 6. Results ────────────────────────────────
+                    // ── 6. Results ─────────────────────────────────────
                     sectionLabel("Results")
                     if let response = vm.planResponse {
                         PlanResultsView(
                             response: response,
                             investingEnabled: vm.investingEnabled
                         )
-                    } else {
+                    } else if vm.isLoading {
                         resultsSkeletonView
+                    } else {
+                        emptyStateView
                     }
 
-                    // ── Save CTA ──────────────────────────────────
+                    // ── Save CTA ───────────────────────────────────────
                     savePlanView
                         .padding(.horizontal, 20)
                         .padding(.top, 16)
@@ -87,19 +90,26 @@ struct PlanView: View {
                     Spacer().frame(height: 110)
                 }
             }
-            .refreshable { await vm.recalculate() }
+            .refreshable {
+                await vm.fetchLimits()
+                await vm.recalculate()
+            }
 
-            // ── Loading overlay ───────────────────────────────────
+            // ── Loading overlay ────────────────────────────────────────
             if vm.isLoading {
                 loadingBanner
             }
         }
-        .task { await vm.recalculate() }
+        .task {
+            // On first appear: fetch limits, then calculate
+            await vm.fetchLimits()
+            await vm.recalculate()
+        }
         .alert("Something went wrong", isPresented: Binding(
-            get: { vm.errorMessage != nil },
-            set: { if !$0 { vm.errorMessage = nil } }
+            get:  { vm.errorMessage != nil },
+            set:  { if !$0 { vm.errorMessage = nil } }
         )) {
-            Button("Retry")   { Task { await vm.recalculate() } }
+            Button("Retry") { Task { await vm.fetchLimits(); await vm.recalculate() } }
             Button("Dismiss", role: .cancel) { vm.errorMessage = nil }
         } message: {
             Text(vm.errorMessage ?? "")
@@ -127,6 +137,18 @@ struct PlanView: View {
             .background(Color.border)
             .padding(.horizontal, 20)
             .padding(.top, 16)
+    }
+
+    // MARK: - Empty state
+
+    private var emptyStateView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "chart.line.uptrend.xyaxis")
+                .font(.system(size: 36)).foregroundColor(.mist)
+            Text("Complete onboarding to see your plan")
+                .font(AppFont.body).foregroundColor(.mist)
+        }
+        .frame(maxWidth: .infinity).padding(40)
     }
 
     // MARK: - Results Skeleton
@@ -210,7 +232,7 @@ struct PlanView: View {
     private func triggerRecalculate() {
         recalcTask?.cancel()
         recalcTask = Task {
-            try? await Task.sleep(nanoseconds: 400_000_000)
+            try? await Task.sleep(nanoseconds: 400_000_000) // 400ms debounce
             guard !Task.isCancelled else { return }
             await vm.recalculate()
         }
