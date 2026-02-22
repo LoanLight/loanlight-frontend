@@ -23,7 +23,7 @@ struct FirstLoadingView: View {
 
                 GeometryReader { geo in
                     ZStack {
-                        // Glow halo
+                        // loaGlow halo
                         Circle()
                             .fill(
                                 RadialGradient(

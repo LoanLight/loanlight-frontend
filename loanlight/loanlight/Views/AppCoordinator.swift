@@ -15,18 +15,20 @@ enum AppScreen {
 
 enum OnboardingStep {
     case federalLoans          // Step 1 — upload PDF
-    case confirmFederalLoans   // Step 2 — review extracted loan
-    case privateLoans          // Step 3
-    case offerLetter           // Step 4
-    case location              // Step 5
-    case loading               // Step 6
+    case confirmFederalLoans   // Step 2 — review federal loan
+    case privateLoans          // Step 3 — upload all private loans
+    case confirmPrivateLoans   // Step 4 — review all private loans
+    case offerLetter           // Step 5
+    case location              // Step 6
+    case loading               // Step 7
 }
 
 // MARK: - Onboarding State
 
 private final class OnboardingState {
     var confirmedFederalLoans: [LoanEntity]  = []
-    var privateLoans: [PrivateLoanIn]        = []
+    var pendingPrivateLoans: [LoanEntity]    = []   // held for confirmation screen
+    var privateLoans: [PrivateLoanIn]        = []   // finalized after confirmation
     var jobOffer: JobOfferIn?                = nil
     var housing: HousingIn?                  = nil
     var monthlyExpenses: Double              = 0
@@ -42,16 +44,12 @@ struct AppCoordinator: View {
     var body: some View {
         Group {
             switch screen {
-
             case .auth:
-                // FIX 1: AuthFlowView uses `onAuthenticated`, not a trailing closure label
                 AuthFlowView(onAuthenticated: {
                     transition(to: .onboarding(.federalLoans))
                 })
-
             case .onboarding(let step):
                 onboardingView(for: step)
-
             case .main:
                 MainTabView(planVM: planVM)
             }
@@ -65,7 +63,7 @@ struct AppCoordinator: View {
         switch step {
 
         case .federalLoans:
-            FederalLoansView(currentStep: 1, totalSteps: 6, onComplete: { extractedLoans in
+            FederalLoansView(currentStep: 1, totalSteps: 7, onComplete: { extractedLoans in
                 onboardingState.confirmedFederalLoans = extractedLoans
                 transition(to: .onboarding(.confirmFederalLoans))
             })
@@ -80,22 +78,53 @@ struct AppCoordinator: View {
             )
 
         case .privateLoans:
-            // PrivateLoansView uses `onContinue` — correct
-            PrivateLoansView(currentStep: 3, totalSteps: 6, onContinue: { privateLoanIns in
-                onboardingState.privateLoans = privateLoanIns
-                transition(to: .onboarding(.offerLetter))
-            })
+            // User uploads all private loans, taps Continue —
+            // passes [LoanEntity] so confirmation screen can show/edit them
+            PrivateLoanView(
+                currentStep: 3,
+                totalSteps: 7,
+                onContinue: { loanEntities in
+                    if loanEntities.isEmpty {
+                        // Skipped — go straight to offer letter
+                        onboardingState.privateLoans = []
+                        transition(to: .onboarding(.offerLetter))
+                    } else {
+                        onboardingState.pendingPrivateLoans = loanEntities
+                        transition(to: .onboarding(.confirmPrivateLoans))
+                    }
+                }
+            )
+
+        case .confirmPrivateLoans:
+            PrivateLoansConfirmationView(
+                loans: onboardingState.pendingPrivateLoans,
+                onSave: { savedLoans in
+                    // Convert confirmed LoanEntities to PrivateLoanIn for backend
+                    onboardingState.privateLoans = savedLoans.map { entity in
+                        PrivateLoanIn(
+                            lenderName: entity.servicer.isEmpty ? "Private Loan" : entity.servicer,
+                            currentBalance: Decimal(string: entity.totalBalance
+                                .replacingOccurrences(of: "$", with: "")
+                                .replacingOccurrences(of: ",", with: "")) ?? 0,
+                            interestRate: Decimal(string: entity.interestRate
+                                .replacingOccurrences(of: "%", with: "")) ?? 0,
+                            minMonthlyPayment: Decimal(string: entity.monthlyPayment
+                                .replacingOccurrences(of: "$", with: "")
+                                .replacingOccurrences(of: ",", with: "")) ?? 0
+                        )
+                    }
+                    transition(to: .onboarding(.offerLetter))
+                }
+            )
 
         case .offerLetter:
-            // FIX 3: OfferLetterView uses `onContinue`, not a trailing closure
-            OfferLetterView(currentStep: 4, totalSteps: 6, onContinue: { jobOfferIn in
+            OfferLetterView(currentStep: 5, totalSteps: 7, onContinue: { jobOfferIn in
                 onboardingState.jobOffer = jobOfferIn
                 transition(to: .onboarding(.location))
             })
 
         case .location:
-            // LocationView uses `onContinue` — correct
-            LocationView(currentStep: 5, totalSteps: 6, onContinue: { housingIn, expenses in
+            LocationView(currentStep: 6, totalSteps: 7, onContinue: { housingIn, expenses in
                 onboardingState.housing = housingIn
                 onboardingState.monthlyExpenses = expenses
                 transition(to: .onboarding(.loading))
@@ -117,3 +146,4 @@ struct AppCoordinator: View {
         }
     }
 }
+

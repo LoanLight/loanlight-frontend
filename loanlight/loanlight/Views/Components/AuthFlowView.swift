@@ -154,6 +154,7 @@ struct SignInView: View {
             // App name
             VStack(spacing: 6) {
                 Text("LoanPath")
+                    .padding(.top, 50)
                     .font(AppFont.serif(30))
                     .foregroundColor(.white)
                 Text("Your student debt, finally made sense of.")

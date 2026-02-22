@@ -1,8 +1,6 @@
 //
-//  Federal.swift
+//  PrivateLoans.swift
 //  loanlight
-//
-//  Created by Sruthy Mammen on 2/21/26.
 //
 
 import SwiftUI
@@ -15,49 +13,28 @@ struct PrivateLoanFile: Identifiable {
     var isExtracting: Bool = false
     var failed: Bool = false
 
-    /// Converts extracted data to the backend request model
-    func toPrivateLoanIn() -> PrivateLoanIn? {
-        guard let data = extractedData else { return nil }
-        let balance = Decimal(string: data.totalBalance
-            .replacingOccurrences(of: "$", with: "")
-            .replacingOccurrences(of: ",", with: "")) ?? 0
-        let rate = Decimal(string: data.interestRate
-            .replacingOccurrences(of: "%", with: "")) ?? 0
-        let payment = Decimal(string: data.monthlyPayment
-            .replacingOccurrences(of: "$", with: "")
-            .replacingOccurrences(of: ",", with: "")) ?? 0
-        return PrivateLoanIn(
-            lenderName: data.servicer.isEmpty ? fileName : data.servicer,
-            currentBalance: balance,
-            interestRate: rate,
-            minMonthlyPayment: payment
-        )
-    }
-
-    /// Converts to LoanEntity for use with LoanConfirmationView
     func toLoanEntity() -> LoanEntity {
-        LoanEntity(
-            servicer:       extractedData?.servicer       ?? "",
-            totalBalance:   extractedData?.totalBalance   ?? "",
-            loanType:       extractedData?.loanType       ?? "",
-            interestRate:   extractedData?.interestRate   ?? "",
-            repaymentPlan:  extractedData?.repaymentPlan  ?? "",
-            monthlyPayment: extractedData?.monthlyPayment ?? "",
-            loanStatus:     extractedData?.loanStatus     ?? ""
-        )
+        var entity = LoanEntity()
+        entity.servicer       = extractedData?.servicer       ?? ""
+        entity.totalBalance   = extractedData?.totalBalance   ?? ""
+        entity.loanType       = extractedData?.loanType       ?? ""
+        entity.interestRate   = extractedData?.interestRate   ?? ""
+        entity.repaymentPlan  = extractedData?.repaymentPlan  ?? ""
+        entity.monthlyPayment = extractedData?.monthlyPayment ?? ""
+        entity.loanStatus     = extractedData?.loanStatus     ?? ""
+        return entity
     }
 }
 
-struct PrivateLoansView: View {
+struct PrivateLoanView: View {
 
-    var currentStep: Int = 2
-    var totalSteps: Int = 6
-    var onContinue: ([PrivateLoanIn]) -> Void = { _ in }
+    var currentStep: Int = 3
+    var totalSteps: Int = 7
+    /// Returns [LoanEntity] — AppCoordinator converts to PrivateLoanIn after confirmation
+    var onContinue: ([LoanEntity]) -> Void = { _ in }
 
     @State private var uploadedFiles: [PrivateLoanFile] = []
     @State private var showFilePicker = false
-    @State private var loanToConfirm: LoanEntity? = nil
-    @State private var lastExtractedFileId: UUID? = nil
 
     var body: some View {
         ZStack {
@@ -65,7 +42,7 @@ struct PrivateLoansView: View {
 
             VStack(spacing: 0) {
 
-                // ── Progress Bar ──
+                // Progress Bar
                 HStack(spacing: 4) {
                     ForEach(1...totalSteps, id: \.self) { step in
                         RoundedRectangle(cornerRadius: 2)
@@ -80,7 +57,7 @@ struct PrivateLoansView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
 
-                        // ── Step Pill ──
+                        // Step Pill
                         HStack(spacing: 6) {
                             Circle()
                                 .frame(width: 6, height: 6)
@@ -106,20 +83,17 @@ struct PrivateLoansView: View {
                             .lineSpacing(3)
                             .padding(.bottom, 24)
 
-                        // ── Uploaded Files ──
+                        // Uploaded files list
                         ForEach($uploadedFiles) { $file in
                             UploadedFileRow(
                                 file: $file,
-                                onTap: {
-                                    lastExtractedFileId = file.id
-                                    loanToConfirm = file.toLoanEntity()
-                                },
+                                onTap: { },
                                 onDelete: { removeFile(file) }
                             )
                             .padding(.bottom, 10)
                         }
 
-                        // ── Add File Card ──
+                        // Add file card
                         Button(action: { showFilePicker = true }) {
                             VStack(spacing: 12) {
                                 ZStack {
@@ -163,21 +137,27 @@ struct PrivateLoansView: View {
                     .padding(.horizontal, 24)
                 }
 
-                // ── Bottom Buttons ──
+                // Bottom Buttons
                 VStack(spacing: 10) {
-                    Button(action: {
-                        let loans = uploadedFiles.compactMap { $0.toPrivateLoanIn() }
-                        onContinue(loans)
-                    }) {
-                        Text("Confirm & Continue")
-                            .font(AppFont.ctaButton)
-                            .foregroundColor(.white)
+                    if !uploadedFiles.isEmpty {
+                        Button(action: {
+                            let entities = uploadedFiles.map { $0.toLoanEntity() }
+                            onContinue(entities)
+                        }) {
+                            HStack(spacing: 8) {
+                                Text("Continue")
+                                    .font(AppFont.ctaButton)
+                                Image(systemName: "arrow.right")
+                                    .font(.system(size: 14, weight: .bold))
+                            }
+                            .foregroundColor(.ink)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 17)
-                            .background(uploadedFiles.isEmpty ? Color.subtleBg : Color.primary)
+                            .background(Color.gold)
                             .clipShape(RoundedRectangle(cornerRadius: 14))
+                        }
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
                     }
-                    .disabled(uploadedFiles.isEmpty)
 
                     Button(action: { onContinue([]) }) {
                         Text("No private loans — Skip")
@@ -185,6 +165,7 @@ struct PrivateLoansView: View {
                             .foregroundColor(.secondaryText)
                     }
                 }
+                .animation(.easeInOut(duration: 0.2), value: uploadedFiles.count)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 36)
                 .padding(.top, 12)
@@ -218,9 +199,6 @@ struct PrivateLoansView: View {
                 case .success(let data):
                     uploadedFiles[index].extractedData = data
                     uploadedFiles[index].isExtracting = false
-                    // Automatically open confirmation after extraction
-                    lastExtractedFileId = fileId
-                    loanToConfirm = uploadedFiles[index].toLoanEntity()
                 case .failure:
                     uploadedFiles[index].isExtracting = false
                     uploadedFiles[index].failed = true
@@ -246,7 +224,6 @@ struct UploadedFileRow: View {
             Image(systemName: "doc.fill")
                 .font(.system(size: 20))
                 .foregroundColor(.secondaryText)
-
             VStack(alignment: .leading, spacing: 2) {
                 Text(file.fileName)
                     .font(AppFont.captionMedium)
@@ -258,21 +235,14 @@ struct UploadedFileRow: View {
                         .foregroundColor(.secondaryText)
                 }
             }
-
             Spacer()
-
             if file.isExtracting {
                 ProgressView().scaleEffect(0.8)
             } else if file.failed {
-                Text("Failed")
-                    .font(AppFont.captionBold)
-                    .foregroundColor(.danger)
+                Text("Failed").font(AppFont.captionBold).foregroundColor(.danger)
             } else {
-                Text("✓ Extracted")
-                    .font(AppFont.captionBold)
-                    .foregroundColor(.primary)
+                Text("✓ Extracted").font(AppFont.captionBold).foregroundColor(.primary)
             }
-
             Button(action: onDelete) {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundColor(Color(.systemGray4))
@@ -282,15 +252,9 @@ struct UploadedFileRow: View {
         .padding(14)
         .background(Color.cardBg)
         .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Color.cardBorder, lineWidth: 1)
-        )
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.cardBorder, lineWidth: 1))
         .onTapGesture { onTap() }
     }
 }
 
-#Preview {
-    PrivateLoansView()
-}
 

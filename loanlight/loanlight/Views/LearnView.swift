@@ -5,8 +5,6 @@ import Combine
 // MARK: - Data Models
 
 struct Lesson: Identifiable, Hashable {
-    // Stable string ID — avoids UUID() regenerating on every struct copy,
-    // which would break SwiftUI identity and navigationDestination(item:).
     let id: String
     let title: String
     let promise: String
@@ -232,12 +230,15 @@ struct LessonLibrary {
     }
 }
 
+// MARK: - LearnView
 
 struct LearnView: View {
+    var investingEnabled: Bool = true
+    @Binding var selectedTab: Int
+
     @State private var searchText    = ""
     @State private var selectedTopic: LessonTopic? = nil
     @State private var selectedLesson: Lesson?     = nil
-    var investingEnabled: Bool = true
 
     var filteredLessons: [Lesson] {
         let base = selectedTopic.map { LessonLibrary.lessons(for: $0) } ?? LessonLibrary.all
@@ -266,10 +267,8 @@ struct LearnView: View {
             }
             .background(Color.paper)
             .navigationBarHidden(true)
-            // Use navigationDestination instead of .sheet so the detail
-            // view gets a proper back button in the nav stack.
             .navigationDestination(item: $selectedLesson) { lesson in
-                LessonDetailView(lesson: lesson)
+                LessonDetailView(lesson: lesson, selectedTab: $selectedTab)
             }
         }
     }
@@ -299,19 +298,14 @@ struct LearnView: View {
     private var homeSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             LearnSectionHeader(title: "Start Here", subtitle: "New? Begin with these four.")
-            startHereRow
-                .padding(.bottom, 32)
-
+            startHereRow.padding(.bottom, 32)
             LearnSectionHeader(title: "Browse by Topic", subtitle: nil)
-            topicChipRow
-                .padding(.bottom, 32)
-
+            topicChipRow.padding(.bottom, 32)
             LearnSectionHeader(
                 title: "Recommended for You",
                 subtitle: investingEnabled ? "Based on your investing plan" : "Based on your payoff plan"
             )
-            recommendedList
-                .padding(.bottom, 40)
+            recommendedList.padding(.bottom, 40)
         }
     }
 
@@ -333,23 +327,13 @@ struct LearnView: View {
                     .background(topic.color.opacity(0.12))
                     .clipShape(Capsule())
                 }
-
                 Text("\(filteredLessons.count) result\(filteredLessons.count == 1 ? "" : "s")")
-                    .font(AppFont.caption)
-                    .foregroundColor(.mist)
-
+                    .font(AppFont.caption).foregroundColor(.mist)
                 Spacer()
-
                 Button {
-                    withAnimation {
-                        searchText = ""
-                        selectedTopic = nil
-                    }
+                    withAnimation { searchText = ""; selectedTopic = nil }
                 } label: {
-                    Text("Clear all")
-                        .font(AppFont.caption)
-                        .foregroundColor(.mist)
-                        .underline()
+                    Text("Clear all").font(AppFont.caption).foregroundColor(.mist).underline()
                 }
             }
             .padding(.horizontal, 20)
@@ -364,8 +348,7 @@ struct LearnView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 14) {
                 ForEach(LessonLibrary.startHere) { lesson in
-                    StartHereCard(lesson: lesson)
-                        .onTapGesture { selectedLesson = lesson }
+                    StartHereCard(lesson: lesson).onTapGesture { selectedLesson = lesson }
                 }
             }
             .padding(.horizontal, 20)
@@ -396,15 +379,14 @@ struct LearnView: View {
     }
 }
 
+// MARK: - Reusable Sub-Views
 
 struct LearnSectionHeader: View {
     let title: String
     let subtitle: String?
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(AppFont.serifBold(17))
-                .foregroundColor(.ink)
+            Text(title).font(AppFont.serifBold(17)).foregroundColor(.ink)
             if let sub = subtitle {
                 Text(sub).font(AppFont.caption).foregroundColor(.mist)
             }
@@ -418,22 +400,15 @@ struct LearnSearchBar: View {
     @Binding var text: String
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 14))
-                .foregroundColor(.mist)
-            TextField("Search lessons…", text: $text)
-                .font(AppFont.body)
-                .foregroundColor(.ink)
+            Image(systemName: "magnifyingglass").font(.system(size: 14)).foregroundColor(.mist)
+            TextField("Search lessons…", text: $text).font(AppFont.body).foregroundColor(.ink)
             if !text.isEmpty {
                 Button { text = "" } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.mist)
-                        .font(.system(size: 14))
+                    Image(systemName: "xmark.circle.fill").foregroundColor(.mist).font(.system(size: 14))
                 }
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 14).padding(.vertical, 12)
         .background(Color.surface)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.border, lineWidth: 1))
@@ -447,42 +422,32 @@ struct LessonListSection: View {
         VStack(spacing: 12) {
             if lessons.isEmpty {
                 VStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 32))
-                        .foregroundColor(.border)
-                    Text("No lessons found")
-                        .font(AppFont.body)
-                        .foregroundColor(.mist)
+                    Image(systemName: "magnifyingglass").font(.system(size: 32)).foregroundColor(.border)
+                    Text("No lessons found").font(AppFont.body).foregroundColor(.mist)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.top, 60)
+                .frame(maxWidth: .infinity).padding(.top, 60)
             } else {
                 ForEach(lessons) { lesson in
-                    LessonRow(lesson: lesson)
-                        .onTapGesture { onTap(lesson) }
-                        .padding(.horizontal, 20)
+                    LessonRow(lesson: lesson).onTapGesture { onTap(lesson) }.padding(.horizontal, 20)
                 }
             }
         }
     }
 }
 
-
 struct StartHereCard: View {
     let lesson: Lesson
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             topicBadge
-            Text(lesson.title)
-                .font(AppFont.serifBold(16))
-                .foregroundColor(.ink)
-                .lineLimit(2)
-            Text(lesson.promise)
-                .font(AppFont.caption)
-                .foregroundColor(.mist)
-                .lineLimit(2)
+            Text(lesson.title).font(AppFont.serifBold(16)).foregroundColor(.ink).lineLimit(2)
+            Text(lesson.promise).font(AppFont.caption).foregroundColor(.mist).lineLimit(2)
             Spacer()
-            readTime
+            HStack(spacing: 4) {
+                Image(systemName: "clock").font(.system(size: 11))
+                Text("\(lesson.readMinutes) min read").font(AppFont.microBold)
+            }
+            .foregroundColor(.mist)
         }
         .padding(18)
         .frame(width: 220, height: 190)
@@ -502,16 +467,7 @@ struct StartHereCard: View {
         .background(lesson.topic.color.opacity(0.1))
         .clipShape(Capsule())
     }
-
-    private var readTime: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "clock").font(.system(size: 11))
-            Text("\(lesson.readMinutes) min read").font(AppFont.microBold)
-        }
-        .foregroundColor(.mist)
-    }
 }
-
 
 struct TopicChip: View {
     let topic: LessonTopic
@@ -528,7 +484,6 @@ struct TopicChip: View {
         .animation(.spring(response: 0.25), value: isSelected)
     }
 }
-
 
 struct LessonRow: View {
     let lesson: Lesson
@@ -552,8 +507,11 @@ struct LessonRow: View {
     }
 }
 
+// MARK: - Lesson Detail View
+
 struct LessonDetailView: View {
     let lesson: Lesson
+    @Binding var selectedTab: Int
     @Environment(\.dismiss) var dismiss
     @StateObject private var tts = ElevenLabsService()
 
@@ -576,15 +534,12 @@ struct LessonDetailView: View {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button { dismiss() } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .semibold))
-                        Text("Learn")
-                            .font(AppFont.body)
+                        Image(systemName: "chevron.left").font(.system(size: 14, weight: .semibold))
+                        Text("Learn").font(AppFont.body)
                     }
                     .foregroundColor(.sage)
                 }
             }
-
         }
         .onDisappear { tts.stop() }
         .alert("Audio Error", isPresented: Binding(
@@ -612,41 +567,23 @@ struct LessonDetailView: View {
             .foregroundColor(lesson.topic.color)
             .padding(.bottom, 16)
 
-            Text(lesson.title)
-                .font(AppFont.serif(26))
-                .foregroundColor(.ink)
-                .padding(.bottom, 10)
-
-            Text(lesson.promise)
-                .font(AppFont.body)
-                .foregroundColor(.mist)
-                .padding(.bottom, 28)
-
+            Text(lesson.title).font(AppFont.serif(26)).foregroundColor(.ink).padding(.bottom, 10)
+            Text(lesson.promise).font(AppFont.body).foregroundColor(.mist).padding(.bottom, 28)
             Rectangle().fill(Color.border).frame(height: 1).padding(.bottom, 20)
 
-            // ── Inline listen button ──────────────────────────────────
-            InlineTTSRow(state: tts.playbackState) {
-                tts.toggle(lesson: lesson)
-            }
-            .padding(.bottom, 28)
+            InlineTTSRow(state: tts.playbackState) { tts.toggle(lesson: lesson) }
+                .padding(.bottom, 28)
         }
     }
 
     private var detailBody: some View {
         Text(lesson.bodyText)
-            .font(AppFont.body)
-            .foregroundColor(.ink)
-            .lineSpacing(6)
-            .padding(.bottom, 32)
+            .font(AppFont.body).foregroundColor(.ink).lineSpacing(6).padding(.bottom, 32)
     }
 
     private var takeawaysCard: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Key Takeaways")
-                .font(AppFont.serifBold(17))
-                .foregroundColor(.ink)
-                .padding(.bottom, 16)
-
+            Text("Key Takeaways").font(AppFont.serifBold(17)).foregroundColor(.ink).padding(.bottom, 16)
             VStack(alignment: .leading, spacing: 14) {
                 ForEach(Array(lesson.keyTakeaways.enumerated()), id: \.offset) { i, takeaway in
                     HStack(alignment: .top, spacing: 12) {
@@ -658,9 +595,7 @@ struct LessonDetailView: View {
                             .clipShape(Circle())
                             .padding(.top, 1)
                         Text(takeaway)
-                            .font(AppFont.body)
-                            .foregroundColor(.ink)
-                            .lineSpacing(4)
+                            .font(AppFont.body).foregroundColor(.ink).lineSpacing(4)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -675,7 +610,13 @@ struct LessonDetailView: View {
     @ViewBuilder
     private var actionButton: some View {
         if let label = lesson.actionLabel {
-            NavigationLink(destination: PlanView()) {
+            Button(action: {
+                dismiss()
+                // Small delay so the nav pop animation completes before switching tabs
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    selectedTab = 0
+                }
+            }) {
                 HStack(spacing: 8) {
                     Text(label).font(AppFont.ctaButton)
                     Image(systemName: "arrow.right").font(.system(size: 14, weight: .semibold))
@@ -691,6 +632,7 @@ struct LessonDetailView: View {
     }
 }
 
+// MARK: - TTS Components
 
 struct InlineTTSRow: View {
     let state: TTSPlaybackState
@@ -699,96 +641,70 @@ struct InlineTTSRow: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 10) {
-                // Icon circle
                 ZStack {
-                    Circle()
-                        .fill(iconBackground)
-                        .frame(width: 36, height: 36)
-
+                    Circle().fill(iconBackground).frame(width: 36, height: 36)
                     if case .loading = state {
-                        ProgressView()
-                            .scaleEffect(0.65)
-                            .tint(.white)
+                        ProgressView().scaleEffect(0.65).tint(.white)
                     } else {
-                        Image(systemName: iconName)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.white)
+                        Image(systemName: iconName).font(.system(size: 14, weight: .semibold)).foregroundColor(.white)
                     }
                 }
-
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(labelText)
-                        .font(AppFont.bodyBold)
-                        .foregroundColor(.ink)
-                    Text(sublabelText)
-                        .font(AppFont.caption)
-                        .foregroundColor(.mist)
+                    Text(labelText).font(AppFont.bodyBold).foregroundColor(.ink)
+                    Text(sublabelText).font(AppFont.caption).foregroundColor(.mist)
                 }
-
                 Spacer()
-
-                // Animated sound wave when playing
-                if case .playing = state {
-                    SoundWaveView()
-                }
+                if case .playing = state { SoundWaveView() }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 14).padding(.vertical, 10)
             .background(iconBackground.opacity(0.08))
             .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(iconBackground.opacity(0.25), lineWidth: 1)
-            )
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(iconBackground.opacity(0.25), lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
 
     private var iconName: String {
         switch state {
-        case .idle:    return "headphones"
+        case .idle: return "headphones"
         case .loading: return "headphones"
         case .playing: return "pause.fill"
-        case .paused:  return "play.fill"
-        case .error:   return "exclamationmark"
+        case .paused: return "play.fill"
+        case .error: return "exclamationmark"
         }
     }
 
     private var iconBackground: Color {
         switch state {
-        case .playing:          return .sage
-        case .loading:          return .sage
-        case .paused:           return .sage
-        case .error:            return Color(hex: "#C47C5A")
-        case .idle:             return Color(hex: "#6B7280")
+        case .playing, .loading, .paused: return .sage
+        case .error: return Color(hex: "#C47C5A")
+        case .idle: return Color(hex: "#6B7280")
         }
     }
 
     private var labelText: String {
         switch state {
-        case .idle:    return "Listen to this lesson"
+        case .idle: return "Listen to this lesson"
         case .loading: return "Loading audio…"
         case .playing: return "Now playing"
-        case .paused:  return "Paused — tap to resume"
-        case .error:   return "Audio unavailable"
+        case .paused: return "Paused — tap to resume"
+        case .error: return "Audio unavailable"
         }
     }
 
     private var sublabelText: String {
         switch state {
-        case .idle:    return "Powered by ElevenLabs"
+        case .idle: return "Powered by ElevenLabs"
         case .loading: return "Fetching voice audio"
         case .playing: return "Tap to pause"
-        case .paused:  return "Powered by ElevenLabs"
-        case .error:   return "Check your API key"
+        case .paused: return "Powered by ElevenLabs"
+        case .error: return "Check your API key"
         }
     }
 }
 
-// Animated three-bar sound wave shown while audio plays
 struct SoundWaveView: View {
     @State private var heights: [CGFloat] = [6, 14, 10]
-
     var body: some View {
         HStack(spacing: 3) {
             ForEach(0..<3, id: \.self) { i in
@@ -804,103 +720,27 @@ struct SoundWaveView: View {
             }
         }
         .frame(width: 20, height: 20)
-        .onAppear {
-            heights = [14, 6, 12]
-        }
+        .onAppear { heights = [14, 6, 12] }
     }
 }
 
-// MARK: - TTS Toolbar Button
-
-struct TTSButton: View {
-    let state: TTSPlaybackState
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            ZStack {
-                // Pulsing ring while loading
-                if case .loading = state {
-                    Circle()
-                        .stroke(Color.sage.opacity(0.3), lineWidth: 2)
-                        .frame(width: 34, height: 34)
-                        .scaleEffect(pulseScale)
-                        .opacity(pulseOpacity)
-                        .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulseScale)
-                }
-
-                Circle()
-                    .fill(iconBackground)
-                    .frame(width: 32, height: 32)
-
-                Group {
-                    if case .loading = state {
-                        ProgressView()
-                            .scaleEffect(0.7)
-                            .tint(.white)
-                    } else {
-                        Image(systemName: iconName)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.white)
-                    }
-                }
-            }
-        }
-        .accessibilityLabel(accessibilityLabel)
-    }
-
-    // Dummy state for animation trigger — real pulse driven by .onAppear
-    @State private var pulseScale: CGFloat = 1.0
-    @State private var pulseOpacity: Double = 0.6
-
-    private var iconName: String {
-        switch state {
-        case .idle:             return "headphones"
-        case .loading:          return "headphones"
-        case .playing:          return "pause.fill"
-        case .paused:           return "play.fill"
-        case .error:            return "exclamationmark"
-        }
-    }
-
-    private var iconBackground: Color {
-        switch state {
-        case .playing:          return .sage
-        case .loading:          return .sage.opacity(0.7)
-        case .error:            return Color(hex: "#C47C5A")
-        default:                return Color.mist.opacity(0.4)
-        }
-    }
-
-    private var accessibilityLabel: String {
-        switch state {
-        case .idle:             return "Listen to this lesson"
-        case .loading:          return "Loading audio"
-        case .playing:          return "Pause audio"
-        case .paused:           return "Resume audio"
-        case .error:            return "Audio error"
-        }
-    }
-}
-
-// MARK: - AppFont extension (delete if already in your Theme file)
+// MARK: - AppFont extension (delete if already in Theme)
 
 extension AppFont {
     static func serifBold(_ size: CGFloat) -> Font { .custom("Georgia-Bold", size: size) }
 }
 
-// MARK: - Preview
+// MARK: - Previews
 
 #Preview("Learn – Home") {
-    LearnView(investingEnabled: true)
+    LearnView(investingEnabled: true, selectedTab: .constant(1))
 }
-
 #Preview("Learn – Investing Off") {
-    LearnView(investingEnabled: false)
+    LearnView(investingEnabled: false, selectedTab: .constant(1))
 }
-
 #Preview("Lesson Detail") {
     NavigationStack {
-        LessonDetailView(lesson: LessonLibrary.all[0])
+        LessonDetailView(lesson: LessonLibrary.all[0], selectedTab: .constant(1))
     }
 }
+
