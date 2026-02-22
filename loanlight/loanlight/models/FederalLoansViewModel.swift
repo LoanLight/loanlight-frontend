@@ -64,8 +64,9 @@ class FederalLoansViewModel: ObservableObject {
                             entity.repaymentPlan  = data.repaymentPlan
                             entity.monthlyPayment = data.monthlyPayment
                             entity.loanStatus     = data.loanStatus
-                            self.extractedLoan    = entity
-                            self.showConfirmation = true
+                            // Auto-confirm into confirmedLoans — full-screen confirmation
+                            // is handled by AppCoordinator after the user taps Continue
+                            self.confirmedLoans   = [entity]
                         case .failure(let error):
                             self.errorMessage = error.localizedDescription
                         }

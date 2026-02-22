@@ -68,13 +68,7 @@ struct FederalLoansView: View {
                 viewModel.extractFromURL(url)
             }
         }
-        .sheet(isPresented: $viewModel.showConfirmation) {
-            if let loan = viewModel.extractedLoan {
-                LoanConfirmationSheet(loan: loan, onConfirm: {
-                    viewModel.confirmExtractedLoan()
-                })
-            }
-        }
+
         .alert("Could Not Extract", isPresented: Binding(
             get: { viewModel.errorMessage != nil },
             set: { if !$0 { viewModel.errorMessage = nil } }
@@ -293,3 +287,4 @@ struct FederalLoansView: View {
 #Preview {
     FederalLoansView(currentStep: 1, totalSteps: 6)
 }
+

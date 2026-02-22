@@ -199,24 +199,6 @@ struct PrivateLoansView: View {
                 handleFileSelected(url: url)
             }
         }
-        // Reuses the same LoanConfirmationView as federal loans
-        .sheet(item: $loanToConfirm) { loan in
-            LoanConfirmationView(loan: loan, onSave: { savedLoan in
-                if let fileId = lastExtractedFileId,
-                   let index = uploadedFiles.firstIndex(where: { $0.id == fileId }) {
-                    var updated = uploadedFiles[index].extractedData ?? ExtractedLoanData()
-                    updated.servicer       = savedLoan.servicer
-                    updated.totalBalance   = savedLoan.totalBalance
-                    updated.loanType       = savedLoan.loanType
-                    updated.interestRate   = savedLoan.interestRate
-                    updated.repaymentPlan  = savedLoan.repaymentPlan
-                    updated.monthlyPayment = savedLoan.monthlyPayment
-                    updated.loanStatus     = savedLoan.loanStatus
-                    uploadedFiles[index].extractedData = updated
-                }
-                loanToConfirm = nil
-            })
-        }
     }
 
     // MARK: - Helpers

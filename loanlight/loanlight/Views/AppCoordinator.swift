@@ -14,11 +14,12 @@ enum AppScreen {
 }
 
 enum OnboardingStep {
-    case federalLoans   // Step 1
-    case privateLoans   // Step 2
-    case offerLetter    // Step 3
-    case location       // Step 4
-    case loading        // Step 5
+    case federalLoans          // Step 1 — upload PDF
+    case confirmFederalLoans   // Step 2 — review extracted loan
+    case privateLoans          // Step 3
+    case offerLetter           // Step 4
+    case location              // Step 5
+    case loading               // Step 6
 }
 
 // MARK: - Onboarding State
@@ -64,29 +65,37 @@ struct AppCoordinator: View {
         switch step {
 
         case .federalLoans:
-            // FIX 2: FederalLoansView uses `onComplete`, not a trailing closure
-            FederalLoansView(currentStep: 1, totalSteps: 5, onComplete: { confirmedLoans in
-                onboardingState.confirmedFederalLoans = confirmedLoans
-                transition(to: .onboarding(.privateLoans))
+            FederalLoansView(currentStep: 1, totalSteps: 6, onComplete: { extractedLoans in
+                onboardingState.confirmedFederalLoans = extractedLoans
+                transition(to: .onboarding(.confirmFederalLoans))
             })
+
+        case .confirmFederalLoans:
+            LoanConfirmationView(
+                loan: onboardingState.confirmedFederalLoans.first ?? LoanEntity(),
+                onSave: { savedLoan in
+                    onboardingState.confirmedFederalLoans = [savedLoan]
+                    transition(to: .onboarding(.privateLoans))
+                }
+            )
 
         case .privateLoans:
             // PrivateLoansView uses `onContinue` — correct
-            PrivateLoansView(currentStep: 2, totalSteps: 5, onContinue: { privateLoanIns in
+            PrivateLoansView(currentStep: 3, totalSteps: 6, onContinue: { privateLoanIns in
                 onboardingState.privateLoans = privateLoanIns
                 transition(to: .onboarding(.offerLetter))
             })
 
         case .offerLetter:
             // FIX 3: OfferLetterView uses `onContinue`, not a trailing closure
-            OfferLetterView(currentStep: 3, totalSteps: 5, onContinue: { jobOfferIn in
+            OfferLetterView(currentStep: 4, totalSteps: 6, onContinue: { jobOfferIn in
                 onboardingState.jobOffer = jobOfferIn
                 transition(to: .onboarding(.location))
             })
 
         case .location:
             // LocationView uses `onContinue` — correct
-            LocationView(currentStep: 4, totalSteps: 5, onContinue: { housingIn, expenses in
+            LocationView(currentStep: 5, totalSteps: 6, onContinue: { housingIn, expenses in
                 onboardingState.housing = housingIn
                 onboardingState.monthlyExpenses = expenses
                 transition(to: .onboarding(.loading))
