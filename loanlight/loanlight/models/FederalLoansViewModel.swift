@@ -34,13 +34,13 @@ struct LoanEntity: Identifiable, Codable {
 
 @MainActor
 class FederalLoansViewModel: ObservableObject {
-    
+
     @Published var extractedLoan: LoanEntity? = nil
     @Published var confirmedLoans: [LoanEntity] = []
     @Published var showConfirmation = false
     @Published var isLoading = false
     @Published var errorMessage: String? = nil
- 
+
     func extractFromURL(_ url: URL) {
         guard url.startAccessingSecurityScopedResource() else {
             errorMessage = "Unable to access file. Please try again."
@@ -76,7 +76,14 @@ class FederalLoansViewModel: ObservableObject {
         }
     }
 
-    /// Called when user taps Confirm on the review sheet
+    /// Called by LoanConfirmationView — saves the user-edited loan (not the raw extracted one)
+    func confirmLoan(_ loan: LoanEntity) {
+        confirmedLoans.append(loan)
+        extractedLoan = nil
+        showConfirmation = false
+    }
+
+    /// Legacy — kept for compatibility but confirmLoan(_:) is preferred
     func confirmExtractedLoan() {
         guard let loan = extractedLoan else { return }
         confirmedLoans.append(loan)
@@ -84,3 +91,4 @@ class FederalLoansViewModel: ObservableObject {
         showConfirmation = false
     }
 }
+

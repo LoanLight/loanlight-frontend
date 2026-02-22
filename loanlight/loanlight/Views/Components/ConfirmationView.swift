@@ -4,12 +4,6 @@
 //
 //  Created by Sruthy Mammen on 2/22/26.
 //
-
-//
-//  ConfirmationView.swift
-//  loanlight
-//
-//  Created by Sruthy Mammen on 2/21/26.
 //
 import SwiftUI
 
